@@ -9,7 +9,8 @@ El backend está diseñado siguiendo los principios de **Clean Architecture**, *
 1. **Alta Cohesión y Bajo Acoplamiento:** Cada dominio funcional del sistema (Usuarios, Postulaciones, Entrevistas, Documentos, Proyectos, Asistencias, Pasajes, Semáforos) se encapsula en su propio módulo independiente con su Controller, Service, DTOs y Entidades.
 2. **Validación Declarativa Fuerte:** Uso estricto de DTOs (*Data Transfer Objects*) validados mediante decoradores de `class-validator` en todas las entradas (`POST`, `PUT`, `PATCH`).
 3. **Seguridad y Control de Acceso (RBAC):** Guards globales y decoradores personalizados (`@Roles()`, `@Auth()`) para restringir endpoints según los roles aprobados: `ADMIN_PASTORAL`, `CATOLIDER`, `VOLUNTARIO`, `POSTULANTE`.
-4. **CORS Centralizado:** Configuración nativa en `main.ts` permitiendo la interacción fluida con el frontend (`http://localhost:5173`).
+4. **Persistencia con PostgreSQL y TypeORM:** Mapeo objeto-relacional mediante `@nestjs/typeorm` y `typeorm` con driver nativo `pg`. Configuración asíncrona mediante `src/config/database.config.ts`, soporte de `data-source.ts` para TypeORM CLI y scripts de migración versionados.
+5. **CORS Centralizado:** Configuración nativa en `main.ts` permitiendo la interacción fluida con el frontend (`http://localhost:5173`).
 
 ---
 
