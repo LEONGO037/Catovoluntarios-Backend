@@ -2,10 +2,10 @@ import {
   Injectable,
   UnauthorizedException,
   BadRequestException,
-  NotFoundException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
+import { MailService } from '../mail/mail.service';
 import { LoginDto } from './dtos/login.dto';
 import { ForgotPasswordDto } from './dtos/forgot-password.dto';
 import { ResetPasswordDto } from './dtos/reset-password.dto';
@@ -18,6 +18,7 @@ export class AuthService {
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
+    private readonly mailService: MailService,
   ) {}
 
   async login(loginDto: LoginDto) {
@@ -73,7 +74,8 @@ export class AuthService {
       // Por seguridad evitamos revelar si el email existe
       return {
         success: true,
-        message: 'Si el correo está registrado, se ha enviado un enlace de recuperación válido por 15 minutos.',
+        message:
+          'Si el correo está registrado en Pastoral, se ha enviado un correo mediante Resend con las instrucciones de recuperación (válido por 15 minutos).',
       };
     }
 
@@ -83,10 +85,18 @@ export class AuthService {
       { expiresIn: '15m' },
     );
 
+    // Envío del correo institucional mediante el servicio de Resend
+    await this.mailService.sendPasswordResetEmail(
+      user.email,
+      user.nombres,
+      resetToken,
+    );
+
     return {
       success: true,
-      message: 'Se ha generado el enlace de reseteo seguro.',
-      resetToken, // Retornado para conveniencia en entorno de pruebas
+      message:
+        'Se ha enviado un correo electrónico mediante Resend con tu enlace seguro de recuperación de contraseña.',
+      resetToken, // Retornado también en la respuesta JSON para facilitar pruebas locales inmediatas
     };
   }
 

@@ -7,6 +7,7 @@ import databaseConfig from './config/database.config';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { MailModule } from './modules/mail/mail.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
         return dbConfig;
       },
     }),
+    MailModule,
     AuthModule,
     UsersModule,
     DashboardModule,
