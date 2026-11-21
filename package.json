@@ -21,7 +21,8 @@
     "typeorm": "typeorm-ts-node-commonjs",
     "migration:generate": "typeorm-ts-node-commonjs migration:generate -d src/database/data-source.ts",
     "migration:run": "typeorm-ts-node-commonjs migration:run -d src/database/data-source.ts",
-    "migration:revert": "typeorm-ts-node-commonjs migration:revert -d src/database/data-source.ts"
+    "migration:revert": "typeorm-ts-node-commonjs migration:revert -d src/database/data-source.ts",
+    "seed:proyectos": "ts-node -r tsconfig-paths/register src/database/seeds/run-seed.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
@@ -72,6 +73,9 @@
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
+    },
+    "moduleNameMapper": {
+      "^@nestjs/typeorm$": "<rootDir>/../test/mocks/typeorm.mock.ts"
     },
     "collectCoverageFrom": [
       "**/*.(t|j)s"

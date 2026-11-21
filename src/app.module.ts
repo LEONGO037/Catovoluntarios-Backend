@@ -4,6 +4,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import databaseConfig from './config/database.config';
+import { ProyectosModule } from './modules/proyectos/proyectos.module';
+import { UbicacionModule } from './modules/ubicacion/ubicacion.module';
 
 @Module({
   imports: [
@@ -23,6 +25,8 @@ import databaseConfig from './config/database.config';
         return dbConfig;
       },
     }),
+    ProyectosModule,
+    UbicacionModule,
   ],
   controllers: [AppController],
   providers: [AppService],
