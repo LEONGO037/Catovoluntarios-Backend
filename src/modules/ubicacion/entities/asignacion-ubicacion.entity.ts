@@ -1,5 +1,13 @@
-import { Entity, Column, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
-import { BaseEntity } from '../../../common/entities/base.entity';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  OneToMany,
+  JoinColumn,
+} from 'typeorm';
 import { UserEntity } from '../../users/entities/user.entity';
 import { ProyectoReceptorEntity } from '../../proyectos/entities/proyecto-receptor.entity';
 import { RegistroAsistenciaEntity } from '../../asistencia/entities/registro-asistencia.entity';
@@ -17,7 +25,10 @@ export enum EstadoAsignacion {
 }
 
 @Entity('asignaciones_ubicacion')
-export class AsignacionUbicacionEntity extends BaseEntity {
+export class AsignacionUbicacionEntity {
+  @PrimaryGeneratedColumn({ name: 'id' })
+  id: number;
+
   get id_asignacion(): number {
     return this.id;
   }
@@ -58,10 +69,14 @@ export class AsignacionUbicacionEntity extends BaseEntity {
   @Column({ type: 'varchar', length: 20, default: '2/2026' })
   semestre: string;
 
-  @Column({ type: 'varchar', length: 20, default: 'Nuevo' })
-  condicion: string; // 'Nuevo' | 'Antiguo'
+  @Column({
+    type: 'enum',
+    enum: CondicionVoluntario,
+    default: CondicionVoluntario.NUEVO,
+  })
+  condicion: CondicionVoluntario;
 
-  @Column({ type: 'varchar', length: 150, name: 'horario_comprometido', default: '' })
+  @Column({ type: 'varchar', length: 150, name: 'horario_comprometido', default: 'Tarde (14:00 - 18:00)' })
   horario_comprometido: string;
 
   get horarioComprometido(): string {
@@ -101,8 +116,12 @@ export class AsignacionUbicacionEntity extends BaseEntity {
     this.habilitadoCampo = val;
   }
 
-  @Column({ type: 'varchar', length: 20, default: 'Activo' })
-  estado: string; // 'Activo' | 'Reasignado' | 'Retirado'
+  @Column({
+    type: 'enum',
+    enum: EstadoAsignacion,
+    default: EstadoAsignacion.ACTIVO,
+  })
+  estado: EstadoAsignacion;
 
   @Column({ type: 'boolean', default: true })
   activo: boolean;
@@ -112,4 +131,10 @@ export class AsignacionUbicacionEntity extends BaseEntity {
 
   @OneToMany(() => ReporteSemaforoEntity, (semaforo) => semaforo.asignacion)
   semaforos: ReporteSemaforoEntity[];
+
+  @CreateDateColumn({ type: 'timestamp with time zone', name: 'created_at' })
+  createdAt: Date;
+
+  @UpdateDateColumn({ type: 'timestamp with time zone', name: 'updated_at' })
+  updatedAt: Date;
 }

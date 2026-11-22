@@ -52,7 +52,7 @@ describe('UbicacionService', () => {
     asignaciones: [],
     createdAt: new Date(),
     updatedAt: new Date(),
-  };
+  } as unknown as ProyectoReceptorEntity;
 
   const mockProyectoDestino: ProyectoReceptorEntity = {
     id_proyecto: 2,
@@ -74,7 +74,7 @@ describe('UbicacionService', () => {
     asignaciones: [],
     createdAt: new Date(),
     updatedAt: new Date(),
-  };
+  } as unknown as ProyectoReceptorEntity;
 
   const mockAsignacion: AsignacionUbicacionEntity = {
     id_asignacion: 50,
@@ -90,7 +90,7 @@ describe('UbicacionService', () => {
     proyecto: mockProyectoOrigen,
     createdAt: new Date(),
     updatedAt: new Date(),
-  };
+  } as unknown as AsignacionUbicacionEntity;
 
   beforeEach(async () => {
     asignacionRepo = {

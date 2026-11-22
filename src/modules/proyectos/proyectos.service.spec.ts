@@ -39,7 +39,7 @@ describe('ProyectosService', () => {
     asignaciones: [],
     createdAt: new Date(),
     updatedAt: new Date(),
-  };
+  } as unknown as ProyectoReceptorEntity;
 
   beforeEach(async () => {
     proyectoRepo = {
