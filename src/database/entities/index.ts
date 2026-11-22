@@ -9,3 +9,4 @@ export * from '../../modules/semaforos/entities/premio-historico.entity';
 export * from '../../modules/documentos/entities/documento-voluntario.entity';
 export * from '../../modules/documentos/entities/sesion-induccion.entity';
 export * from '../../modules/documentos/entities/asistencia-induccion.entity';
+export * from '../../modules/semaforos/entities/evaluacion-proyecto.entity';

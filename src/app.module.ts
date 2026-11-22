@@ -9,6 +9,7 @@ import { UsersModule } from './modules/users/users.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { MailModule } from './modules/mail/mail.module';
 import { DocumentosModule } from './modules/documentos/documentos.module';
+import { SemaforosModule } from './modules/semaforos/semaforos.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { DocumentosModule } from './modules/documentos/documentos.module';
     UsersModule,
     DashboardModule,
     DocumentosModule,
+    SemaforosModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -16,6 +16,9 @@ export class ReporteSemaforoEntity extends BaseEntity {
   @Column({ type: 'varchar', length: 50 })
   mes: string;
 
+  @Column({ type: 'int', default: 2026 })
+  anio: number;
+
   @Column({ type: 'varchar', length: 20, name: 'color_semaforo' })
   colorSemaforo: string; // 'Verde' | 'Amarillo' | 'Rojo' | 'Morado'
 
