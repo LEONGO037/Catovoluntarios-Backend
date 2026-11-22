@@ -10,6 +10,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { MailModule } from './modules/mail/mail.module';
 import { DocumentosModule } from './modules/documentos/documentos.module';
 import { SemaforosModule } from './modules/semaforos/semaforos.module';
+import { PostulacionesModule } from './modules/postulaciones/postulaciones.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { SemaforosModule } from './modules/semaforos/semaforos.module';
     DashboardModule,
     DocumentosModule,
     SemaforosModule,
+    PostulacionesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
