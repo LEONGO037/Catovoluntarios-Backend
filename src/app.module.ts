@@ -8,6 +8,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { MailModule } from './modules/mail/mail.module';
+import { SemaforosModule } from './modules/semaforos/semaforos.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { MailModule } from './modules/mail/mail.module';
     AuthModule,
     UsersModule,
     DashboardModule,
+    SemaforosModule,
   ],
   controllers: [AppController],
   providers: [AppService],

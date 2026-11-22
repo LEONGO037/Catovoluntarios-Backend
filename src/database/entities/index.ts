@@ -6,3 +6,4 @@ export * from '../../modules/ubicacion/entities/asignacion-ubicacion.entity';
 export * from '../../modules/asistencia/entities/registro-asistencia.entity';
 export * from '../../modules/semaforos/entities/reporte-semaforo.entity';
 export * from '../../modules/semaforos/entities/premio-historico.entity';
+export * from '../../modules/semaforos/entities/evaluacion-proyecto.entity';
