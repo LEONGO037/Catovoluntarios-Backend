@@ -121,11 +121,8 @@ Para dar cumplimiento estricto al requerimiento institucional de almacenar archi
 
 | Tabla | Campo de Enlace | Tipo de Archivo Almacenado en Cloudflare |
 | :--- | :--- | :--- |
-| `usuarios` | `avatar_url` | Foto de perfil o avatar del usuario. |
-| `proyectos_receptores` | `logo_url` | Logotipo institucional o imagen de portada del proyecto. |
 | `evaluaciones_psicologicas` | `informe_pdf_url` | Informe clínico E-SRE en formato PDF. |
 | `documentos_voluntario` | `archivo_url` | Póliza de seguro UCB (`APC-7083`), compromiso firmado, fotocopias de CI y carta de menores. |
 | `conciliaciones_mensuales_supervisor` | `reporte_firmas_supervisor_url` | Escaneo en PDF o imagen de la planilla física de firmas entregada por el supervisor externo. |
 | `liquidaciones_pasajes` | `recibi_conforme_firmado_url` | Hoja física individual de *Recibí Conforme* firmada por el voluntario. |
-| `premios_historicos` | `foto_podio_url` | Fotografía en alta resolución del podio o reconocimiento en Base Madre. |
 | `evaluaciones_proyectos_receptores` | `documento_respaldo_url` | Documento o acta física de respaldo de la institución al cierre de semestre. |

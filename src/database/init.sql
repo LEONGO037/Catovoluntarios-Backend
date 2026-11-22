@@ -209,8 +209,6 @@ CREATE TABLE usuarios (
     telefono VARCHAR(20),
     carrera VARCHAR(150),
     semestre_ingreso VARCHAR(20) DEFAULT '2/2026',
-    -- Enlace Cloudflare R2 para la fotografía de perfil
-    avatar_url VARCHAR(1000),
     activo BOOLEAN DEFAULT TRUE NOT NULL,
     reset_password_token VARCHAR(255),
     reset_password_expires TIMESTAMP WITH TIME ZONE,
@@ -259,8 +257,6 @@ CREATE TABLE proyectos_receptores (
     cupo_ocupado INT DEFAULT 0 NOT NULL CHECK (cupo_ocupado >= 0),
     catolider_titular_id INT REFERENCES usuarios(id) ON DELETE SET NULL,
     catolider_aprendiz_id INT REFERENCES usuarios(id) ON DELETE SET NULL,
-    -- Enlace Cloudflare R2 para logotipo o imagen de portada del centro
-    logo_url VARCHAR(1000),
     activo BOOLEAN DEFAULT TRUE NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
@@ -549,8 +545,6 @@ CREATE TABLE premios_historicos (
     nombre_premio VARCHAR(150) NOT NULL,                      -- Ej: 'Catovoluntario Destacado', 'Beca Misión Carmen Pampa'
     categoria VARCHAR(100),                                   -- Ej: 'Liderazgo en Campo', 'Puntualidad y Compromiso'
     descripcion TEXT NOT NULL,
-    -- Enlace Cloudflare R2 con la fotografía oficial del voluntario en la galería de podio
-    foto_podio_url VARCHAR(1000),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
@@ -690,13 +684,13 @@ INSERT INTO semestres (id, codigo, nombre, fecha_inicio, fecha_fin, activo) VALU
 (1, '2/2026', 'Gestión Académica Semestre 2/2026', '2026-08-01', '2026-12-15', TRUE);
 
 -- B) Usuarios del Sistema
-INSERT INTO usuarios (id, ci, email, password_hash, nombres, primer_apellido, segundo_apellido, rol, telefono, carrera, semestre_ingreso, avatar_url) VALUES
-(1, '4892301LP', 'andrea.moscoso@ucb.edu.bo', '$2b$10$OrDEhhyULmAJUOzaWT1PbezSxJfXP0pbI6/njlkrkQCRvnVoBZxkC', 'Andrea', 'Moscoso', 'Valdivia', 'ADMIN_PASTORAL', '71523489', 'Pastoral Universitaria', '1/2023', 'https://pub-catovoluntarios.r2.dev/avatars/andrea_moscoso.webp'),
-(2, '6789123LP', 'catolider.santiago@ucb.edu.bo', '$2b$10$OrDEhhyULmAJUOzaWT1PbezSxJfXP0pbI6/njlkrkQCRvnVoBZxkC', 'Santiago', 'Montes', 'Roca', 'CATOLIDER', '76543210', 'Ingeniería de Sistemas', '1/2024', 'https://pub-catovoluntarios.r2.dev/avatars/santiago_montes.webp'),
-(3, '8912345LP', 'voluntario.maria@ucb.edu.bo', '$2b$10$OrDEhhyULmAJUOzaWT1PbezSxJfXP0pbI6/njlkrkQCRvnVoBZxkC', 'María Belén', 'Flores', 'Mendoza', 'VOLUNTARIO', '70654321', 'Psicología', '2/2024', 'https://pub-catovoluntarios.r2.dev/avatars/maria_flores.webp'),
-(4, '9876543LP', 'postulante.carlos@ucb.edu.bo', '$2b$10$OrDEhhyULmAJUOzaWT1PbezSxJfXP0pbI6/njlkrkQCRvnVoBZxkC', 'Carlos Andrés', 'Quispe', 'Mamani', 'POSTULANTE', '78901234', 'Comunicación Social', '2/2026', 'https://pub-catovoluntarios.r2.dev/avatars/carlos_quispe.webp'),
-(5, '5432167LP', 'docente.pastoral@ucb.edu.bo', '$2b$10$OrDEhhyULmAJUOzaWT1PbezSxJfXP0pbI6/njlkrkQCRvnVoBZxkC', 'Rodrigo', 'Gutiérrez', 'Paz', 'DOCENTE_SUPERVISOR', '72098765', 'Teología y Pastoral', '1/2022', NULL),
-(6, '7712398LP', 'psicologa.carolina@ucb.edu.bo', '$2b$10$OrDEhhyULmAJUOzaWT1PbezSxJfXP0pbI6/njlkrkQCRvnVoBZxkC', 'Carolina', 'Vargas', 'Rios', 'ADMIN_PASTORAL', '71298456', 'Psicología Clínica UCB', '1/2024', NULL);
+INSERT INTO usuarios (id, ci, email, password_hash, nombres, primer_apellido, segundo_apellido, rol, telefono, carrera, semestre_ingreso) VALUES
+(1, '4892301LP', 'andrea.moscoso@ucb.edu.bo', '$2b$10$OrDEhhyULmAJUOzaWT1PbezSxJfXP0pbI6/njlkrkQCRvnVoBZxkC', 'Andrea', 'Moscoso', 'Valdivia', 'ADMIN_PASTORAL', '71523489', 'Pastoral Universitaria', '1/2023'),
+(2, '6789123LP', 'catolider.santiago@ucb.edu.bo', '$2b$10$OrDEhhyULmAJUOzaWT1PbezSxJfXP0pbI6/njlkrkQCRvnVoBZxkC', 'Santiago', 'Montes', 'Roca', 'CATOLIDER', '76543210', 'Ingeniería de Sistemas', '1/2024'),
+(3, '8912345LP', 'voluntario.maria@ucb.edu.bo', '$2b$10$OrDEhhyULmAJUOzaWT1PbezSxJfXP0pbI6/njlkrkQCRvnVoBZxkC', 'María Belén', 'Flores', 'Mendoza', 'VOLUNTARIO', '70654321', 'Psicología', '2/2024'),
+(4, '9876543LP', 'postulante.carlos@ucb.edu.bo', '$2b$10$OrDEhhyULmAJUOzaWT1PbezSxJfXP0pbI6/njlkrkQCRvnVoBZxkC', 'Carlos Andrés', 'Quispe', 'Mamani', 'POSTULANTE', '78901234', 'Comunicación Social', '2/2026'),
+(5, '5432167LP', 'docente.pastoral@ucb.edu.bo', '$2b$10$OrDEhhyULmAJUOzaWT1PbezSxJfXP0pbI6/njlkrkQCRvnVoBZxkC', 'Rodrigo', 'Gutiérrez', 'Paz', 'DOCENTE_SUPERVISOR', '72098765', 'Teología y Pastoral', '1/2022'),
+(6, '7712398LP', 'psicologa.carolina@ucb.edu.bo', '$2b$10$OrDEhhyULmAJUOzaWT1PbezSxJfXP0pbI6/njlkrkQCRvnVoBZxkC', 'Carolina', 'Vargas', 'Rios', 'ADMIN_PASTORAL', '71298456', 'Psicología Clínica UCB', '1/2024');
 
 -- C) Perfiles Base Madre
 INSERT INTO perfiles_voluntario (user_id, tipo_relacion_ucb, fecha_nacimiento, zona_residencia, habilidades_destacadas, tres_palabras_personalidad, experiencia_previa, horas_totales_historicas, nivel, es_menor_edad) VALUES
@@ -705,12 +699,12 @@ INSERT INTO perfiles_voluntario (user_id, tipo_relacion_ucb, fecha_nacimiento, z
 (4, 'Estudiante Regular', '2005-04-12', 'Obrajes', 'Fotografía, Redacción, Apoyo escolar', 'Dinamismo, Creatividad, Constancia', FALSE, 0.00, 'JUNIOR', FALSE);
 
 -- D) Proyectos Receptores Oficiales
-INSERT INTO proyectos_receptores (id, nombre_proyecto, direccion_exacta, macrodistrito_zona, supervisor_nombre, supervisor_telefono, supervisor_email, fecha_inicio_convenio, fecha_fin_convenio, poblacion_objetivo, actividades_semestre_actual, monto_pasaje_por_dia, cupo_maximo, cupo_ocupado, catolider_titular_id, logo_url) VALUES
-(1, 'Hogar San Ramón (Adultos Mayores)', 'Av. Hernando Siles, Calle 12 Obrajes', 'Sur - Obrajes', 'Hna. Rosario Peñaranda', '2783412', 'sanramon@pastoral.org', '2026-02-01', '2026-12-15', 'Adultos Mayores / Geriatría y Memoria', 'Acompañamiento en comedor, talleres de estimulación cognitiva, lectura y fisioterapia suave.', 10.00, 25, 24, 2, 'https://pub-catovoluntarios.r2.dev/proyectos/hogar_san_ramon.webp'),
-(2, 'Comedor San Calixto (Personas en Calle)', 'Calle Indaburo esquina Pichincha s/n', 'Centro - San Calixto', 'P. Marcos Villarroel', '2405678', 'comedor.calixto@pastoral.org', '2026-02-01', '2026-12-15', 'Personas en situación de vulnerabilidad extrema y calle', 'Servicio de mesas, apoyo en cocina, entrega de alimentos calientes y escucha activa.', 10.00, 20, 18, 2, 'https://pub-catovoluntarios.r2.dev/proyectos/comedor_san_calixto.webp'),
-(3, 'Hospital del Niño - Área Lúdica', 'Av. Saavedra, Miraflores', 'Centro - Miraflores', 'Lic. Gabriela Torrico', '2245678', 'ludoteca.hn@salud.gob.bo', '2026-02-01', '2026-12-15', 'Niñez y salud pediátrica', 'Dinámicas de clown hospitalario, lectura de cuentos y apoyo escolar a pacientes internados.', 12.00, 15, 15, 2, 'https://pub-catovoluntarios.r2.dev/proyectos/hospital_del_nino.webp'),
-(4, 'Centro Terapéutico Kallpa (Discapacidad)', 'Calle 21 de Calacoto, Esq. Inofuentes', 'Sur - Calacoto', 'Lic. Daniela Zuazo', '2791234', 'kallpa.bolivia@gmail.com', '2026-02-01', '2026-12-15', 'Jóvenes y adultos con discapacidad psicomotriz y autismo', 'Talleres ocupacionales, hidroterapia asistida y dinámicas de socialización comunitaria.', 15.00, 18, 12, 2, 'https://pub-catovoluntarios.r2.dev/proyectos/kallpa.webp'),
-(5, 'Aldeas Infantiles SOS Mallasa', 'Av. Principal Mallasa s/n', 'Mallasa - Valencia', 'Lic. Marcelo Céspedes', '2745678', 'mallasa@aldeasinfantiles.org.bo', '2026-02-01', '2026-12-15', 'Primera infancia, niñas y niños en desamparo', 'Refuerzo escolar en matemáticas y lenguaje, talleres de robótica básica y juegos al aire libre.', 20.00, 20, 11, 2, 'https://pub-catovoluntarios.r2.dev/proyectos/aldeas_sos.webp');
+INSERT INTO proyectos_receptores (id, nombre_proyecto, direccion_exacta, macrodistrito_zona, supervisor_nombre, supervisor_telefono, supervisor_email, fecha_inicio_convenio, fecha_fin_convenio, poblacion_objetivo, actividades_semestre_actual, monto_pasaje_por_dia, cupo_maximo, cupo_ocupado, catolider_titular_id) VALUES
+(1, 'Hogar San Ramón (Adultos Mayores)', 'Av. Hernando Siles, Calle 12 Obrajes', 'Sur - Obrajes', 'Hna. Rosario Peñaranda', '2783412', 'sanramon@pastoral.org', '2026-02-01', '2026-12-15', 'Adultos Mayores / Geriatría y Memoria', 'Acompañamiento en comedor, talleres de estimulación cognitiva, lectura y fisioterapia suave.', 10.00, 25, 24, 2),
+(2, 'Comedor San Calixto (Personas en Calle)', 'Calle Indaburo esquina Pichincha s/n', 'Centro - San Calixto', 'P. Marcos Villarroel', '2405678', 'comedor.calixto@pastoral.org', '2026-02-01', '2026-12-15', 'Personas en situación de vulnerabilidad extrema y calle', 'Servicio de mesas, apoyo en cocina, entrega de alimentos calientes y escucha activa.', 10.00, 20, 18, 2),
+(3, 'Hospital del Niño - Área Lúdica', 'Av. Saavedra, Miraflores', 'Centro - Miraflores', 'Lic. Gabriela Torrico', '2245678', 'ludoteca.hn@salud.gob.bo', '2026-02-01', '2026-12-15', 'Niñez y salud pediátrica', 'Dinámicas de clown hospitalario, lectura de cuentos y apoyo escolar a pacientes internados.', 12.00, 15, 15, 2),
+(4, 'Centro Terapéutico Kallpa (Discapacidad)', 'Calle 21 de Calacoto, Esq. Inofuentes', 'Sur - Calacoto', 'Lic. Daniela Zuazo', '2791234', 'kallpa.bolivia@gmail.com', '2026-02-01', '2026-12-15', 'Jóvenes y adultos con discapacidad psicomotriz y autismo', 'Talleres ocupacionales, hidroterapia asistida y dinámicas de socialización comunitaria.', 15.00, 18, 12, 2),
+(5, 'Aldeas Infantiles SOS Mallasa', 'Av. Principal Mallasa s/n', 'Mallasa - Valencia', 'Lic. Marcelo Céspedes', '2745678', 'mallasa@aldeasinfantiles.org.bo', '2026-02-01', '2026-12-15', 'Primera infancia, niñas y niños en desamparo', 'Refuerzo escolar en matemáticas y lenguaje, talleres de robótica básica y juegos al aire libre.', 20.00, 20, 11, 2);
 
 -- E) Catolíderes del Semestre (P-06B)
 INSERT INTO catolideres_semestre (user_id, semestre_id, proyecto_id, tipo_catolider, modalidad, activo) VALUES
@@ -762,8 +756,8 @@ INSERT INTO reportes_semaforo (id, id_asignacion, mes, anio, color_semaforo, jus
 (1, 1, 'Noviembre', 2026, 'MORADO', 'María Belén demuestra un liderazgo inspirador con los adultos mayores, puntualidad intachable y excelente iniciativa grupal.', FALSE, 2);
 
 -- P) Premios Históricos y Podio (P-20)
-INSERT INTO premios_historicos (id, id_usuario, semestre_id, proyecto_id, nombre_premio, categoria, descripcion, foto_podio_url) VALUES
-(1, 3, 1, 1, 'Catovoluntario Destacado Pastoral UCB', 'Liderazgo en Campo', 'Reconocimiento al compromiso y vocación de servicio con más de 48 horas ejecutadas en el Hogar San Ramón.', 'https://pub-catovoluntarios.r2.dev/podio/maria_flores_destacada_2026.webp');
+INSERT INTO premios_historicos (id, id_usuario, semestre_id, proyecto_id, nombre_premio, categoria, descripcion) VALUES
+(1, 3, 1, 1, 'Catovoluntario Destacado Pastoral UCB', 'Liderazgo en Campo', 'Reconocimiento al compromiso y vocación de servicio con más de 48 horas ejecutadas en el Hogar San Ramón.');
 
 -- Q) Evaluación Semestral del Proyecto Receptor (P-21)
 INSERT INTO evaluaciones_proyectos_receptores (id, proyecto_id, semestre_id, voluntarios_recibidos, voluntarios_culminados, calificacion_grupo, calificacion_catolider, solicita_continuidad_convenio, cupos_solicitados_proximo_semestre, bloque4_observaciones_sugerencias_libres, nombre_responsable_llenado, cargo_responsable, documento_respaldo_url) VALUES

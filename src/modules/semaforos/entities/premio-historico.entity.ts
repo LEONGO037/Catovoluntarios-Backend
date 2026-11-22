@@ -19,7 +19,4 @@ export class PremioHistoricoEntity extends BaseEntity {
 
   @Column({ type: 'text' })
   descripcion: string;
-
-  @Column({ type: 'varchar', length: 255, name: 'foto_podio_url', nullable: true })
-  fotoPodioUrl?: string;
 }

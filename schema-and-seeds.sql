@@ -149,7 +149,6 @@ CREATE TABLE premios_historicos (
     semestre VARCHAR(20) NOT NULL,
     nombre_premio VARCHAR(150) NOT NULL,
     descripcion TEXT NOT NULL,
-    foto_podio_url VARCHAR(255),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
