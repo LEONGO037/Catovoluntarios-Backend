@@ -4,6 +4,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import databaseConfig from './config/database.config';
+import { AuthModule } from './modules/auth/auth.module';
+import { UsersModule } from './modules/users/users.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { MailModule } from './modules/mail/mail.module';
 
 @Module({
   imports: [
@@ -23,6 +27,10 @@ import databaseConfig from './config/database.config';
         return dbConfig;
       },
     }),
+    MailModule,
+    AuthModule,
+    UsersModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [AppService],
