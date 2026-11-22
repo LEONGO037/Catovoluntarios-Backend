@@ -110,3 +110,22 @@ Todos los usuarios tienen la misma contraseña para facilitar las pruebas del eq
 | **Catolíder** | `catolider.santiago@ucb.edu.bo` | `6789123LP` | Santiago Montes Roca |
 | **Catovoluntario Activo** | `voluntario.maria@ucb.edu.bo` | `8912345LP` | María Belén Flores Mendoza |
 | **Postulante en Proceso** | `postulante.carlos@ucb.edu.bo` | `9876543LP` | Carlos Andrés Quispe Mamani |
+| **Docente Supervisor** | `docente.pastoral@ucb.edu.bo` | `5432167LP` | Rodrigo Gutiérrez Paz |
+| **Psicología Clínica** | `psicologa.carolina@ucb.edu.bo` | `7712398LP` | Carolina Vargas Rios |
+
+---
+
+## 4. POLÍTICA DE ALMACENAMIENTO DE ARCHIVOS EN CLOUDFLARE R2
+
+Para dar cumplimiento estricto al requerimiento institucional de almacenar archivos sin saturar la base de datos ni exceder el presupuesto de hosting (arquitectura de costo cero o menor a \$50 USD/año), **todos los archivos físicos (PDFs, imágenes JPG/PNG, planillas escaneadas y fotografías)** se guardan en **Cloudflare R2** y la base de datos almacena exclusivamente el enlace (`URL`) directo:
+
+| Tabla | Campo de Enlace | Tipo de Archivo Almacenado en Cloudflare |
+| :--- | :--- | :--- |
+| `usuarios` | `avatar_url` | Foto de perfil o avatar del usuario. |
+| `proyectos_receptores` | `logo_url` | Logotipo institucional o imagen de portada del proyecto. |
+| `evaluaciones_psicologicas` | `informe_pdf_url` | Informe clínico E-SRE en formato PDF. |
+| `documentos_voluntario` | `archivo_url` | Póliza de seguro UCB (`APC-7083`), compromiso firmado, fotocopias de CI y carta de menores. |
+| `conciliaciones_mensuales_supervisor` | `reporte_firmas_supervisor_url` | Escaneo en PDF o imagen de la planilla física de firmas entregada por el supervisor externo. |
+| `liquidaciones_pasajes` | `recibi_conforme_firmado_url` | Hoja física individual de *Recibí Conforme* firmada por el voluntario. |
+| `premios_historicos` | `foto_podio_url` | Fotografía en alta resolución del podio o reconocimiento en Base Madre. |
+| `evaluaciones_proyectos_receptores` | `documento_respaldo_url` | Documento o acta física de respaldo de la institución al cierre de semestre. |
