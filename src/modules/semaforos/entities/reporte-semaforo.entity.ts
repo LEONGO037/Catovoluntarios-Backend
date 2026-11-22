@@ -19,8 +19,8 @@ export class ReporteSemaforoEntity extends BaseEntity {
   @Column({ type: 'varchar', length: 20, name: 'color_semaforo' })
   colorSemaforo: string; // 'Verde' | 'Amarillo' | 'Rojo' | 'Morado'
 
-  @Column({ type: 'text', name: 'justificacion_obligatoria' })
-  justificacionObligatoria: string;
+  @Column({ type: 'text', name: 'observaciones_desempeno', nullable: true })
+  observacionesDesempeno?: string;
 
   @Column({ type: 'boolean', name: 'notificar_abandono', default: false })
   notificarAbandono: boolean;

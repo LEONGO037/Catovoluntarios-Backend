@@ -19,8 +19,8 @@ export class ProyectoReceptorEntity extends BaseEntity {
   @Column({ type: 'varchar', length: 20, name: 'supervisor_telefono', nullable: true })
   supervisorTelefono?: string;
 
-  @Column({ type: 'varchar', length: 150, name: 'supervisor_email', nullable: true })
-  supervisorEmail?: string;
+  @Column({ type: 'int', name: 'usuario_supervisor_id', nullable: true })
+  usuarioSupervisorId?: number;
 
   @Column({ type: 'date', name: 'fecha_inicio_convenio', nullable: true })
   fechaInicioConvenio?: Date;

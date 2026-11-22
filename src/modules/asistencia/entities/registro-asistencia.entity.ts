@@ -42,9 +42,6 @@ export class RegistroAsistenciaEntity extends BaseEntity {
   })
   estadoAprobacion: string; // 'Registrado' | 'Aprobado_Catolider' | 'Conciliado'
 
-  @Column({ type: 'boolean', name: 'es_actividad_emergente', default: false })
-  esActividadEmergente: boolean;
-
   @Column({ type: 'int', name: 'aprobado_por_catolider_id', nullable: true })
   aprobadoPorCatoliderId?: number;
 
