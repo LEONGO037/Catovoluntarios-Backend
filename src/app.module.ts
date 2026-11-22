@@ -11,6 +11,8 @@ import { MailModule } from './modules/mail/mail.module';
 import { DocumentosModule } from './modules/documentos/documentos.module';
 import { SemaforosModule } from './modules/semaforos/semaforos.module';
 import { PostulacionesModule } from './modules/postulaciones/postulaciones.module';
+import { ProyectosModule } from './modules/proyectos/proyectos.module';
+import { UbicacionModule } from './modules/ubicacion/ubicacion.module';
 
 @Module({
   imports: [
@@ -37,6 +39,8 @@ import { PostulacionesModule } from './modules/postulaciones/postulaciones.modul
     DocumentosModule,
     SemaforosModule,
     PostulacionesModule,
+    ProyectosModule,
+    UbicacionModule,
   ],
   controllers: [AppController],
   providers: [AppService],

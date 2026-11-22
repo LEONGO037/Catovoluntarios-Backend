@@ -24,12 +24,15 @@ export class RolesGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest();
     const userRole =
-      request.user?.rol || request.headers['x-user-rol'] || Role.ADMIN_PASTORAL;
+      request.user?.rol ||
+      request.headers['x-role'] ||
+      request.headers['x-user-rol'] ||
+      Role.ADMIN_PASTORAL;
 
     const hasRole = requiredRoles.includes(userRole);
     if (!hasRole) {
       throw new ForbiddenException(
-        `Acceso denegado: el rol '${userRole}' no tiene permisos para esta acción`,
+        `Acceso denegado: el rol '${userRole}' no tiene permisos para esta acción (se requiere: ${requiredRoles.join(', ')})`,
       );
     }
 
