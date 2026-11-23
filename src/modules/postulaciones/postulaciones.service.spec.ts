@@ -99,4 +99,70 @@ describe('PostulacionesService - Reglas Institucionales de Admisión', () => {
       'Para postulantes menores de 18 años es obligatoria la confirmación de autorización de padres o tutores legales.',
     );
   });
+
+  it('debe crear un usuario con passwordHash válido al registrar una postulación exitosa', async () => {
+    const dtoValido: any = {
+      tipoRelacionUcb: TipoRelacionUcb.ESTUDIANTE_REGULAR,
+      nombres: 'Mateo',
+      primerApellido: 'Flores',
+      ci: '9988776',
+      expedido: 'LP',
+      fechaNacimiento: '2002-05-10',
+      edad: 24,
+      celular: '71122334',
+      correoElectronico: 'mateo.flores@ucb.edu.bo',
+      carrera: 'Derecho',
+      zonaResidencia: 'Sopocachi',
+      numeroMaterias: 5,
+      tieneMateriasPesadas: false,
+      actividadesExtracurriculares: 1,
+      experienciaVoluntariadoPrevia: true,
+      habilidadesDestacadas: ['Liderazgo'],
+      conocimientoComputacion: true,
+      tresPalabrasPersonalidad: ['Solidario', 'Comprometido', 'Puntual'],
+      poblacionesInteres: ['Adultos mayores'],
+      compromisoAceptado: true,
+    };
+
+    let savedUser: any = null;
+    let savedPostulacion: any = null;
+
+    mockDataSource.transaction.mockImplementation(async (cb: any) => {
+      const mockManager = {
+        getRepository: (entity: any) => {
+          if (entity.name === 'UserEntity' || entity.name === 'usuarios') {
+            return {
+              findOne: jest.fn().mockResolvedValue(null),
+              create: jest.fn().mockImplementation((u) => ({ ...u })),
+              save: jest.fn().mockImplementation(async (u) => {
+                savedUser = { ...u, id: 501 };
+                return savedUser;
+              }),
+            };
+          }
+          return {
+            createQueryBuilder: jest.fn().mockReturnValue({
+              where: jest.fn().mockReturnThis(),
+              getOne: jest.fn().mockResolvedValue(null),
+              getCount: jest.fn().mockResolvedValue(0),
+            }),
+            create: jest.fn().mockImplementation((p) => ({ ...p })),
+            save: jest.fn().mockImplementation(async (p) => {
+              savedPostulacion = { ...p, id: 10 };
+              return savedPostulacion;
+            }),
+          };
+        },
+      };
+      return await cb(mockManager);
+    });
+
+    const resultado = await service.create(dtoValido);
+
+    expect(resultado).toBeDefined();
+    expect(savedUser).toBeDefined();
+    expect(savedUser.passwordHash).toBeDefined();
+    expect(savedUser.passwordHash.length).toBeGreaterThan(20);
+    expect(savedPostulacion.userId).toBe(501);
+  });
 });

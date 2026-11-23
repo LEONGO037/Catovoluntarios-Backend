@@ -64,6 +64,13 @@ export class PostulacionEntity extends BaseEntity {
   @Column({ type: 'int', name: 'edad_calculada', default: 18 })
   edadCalculada: number;
 
+  get edad_calculada(): number {
+    return this.edadCalculada;
+  }
+  set edad_calculada(val: number) {
+    this.edadCalculada = val;
+  }
+
   get edad(): number {
     return this.edadCalculada;
   }

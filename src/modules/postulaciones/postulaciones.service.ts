@@ -14,6 +14,7 @@ import { UserEntity, RolUsuario } from '../users/entities/user.entity';
 import { CreatePostulacionDto } from './dtos/create-postulacion.dto';
 import { FilterPostulacionesDto } from './dtos/filter-postulaciones.dto';
 import { UpdateEstadoPostulacionDto } from './dtos/update-estado-postulacion.dto';
+import * as bcrypt from 'bcryptjs';
 
 @Injectable()
 export class PostulacionesService {
@@ -85,34 +86,51 @@ export class PostulacionesService {
         );
       }
 
-      // Buscar o crear usuario provisional
+      const emailNormalizado = createDto.correoElectronico?.toLowerCase().trim();
+      const ciLimpio = createDto.ci?.trim();
+
+      const carreraFinal =
+        createDto.carrera && createDto.carrera.trim() !== ''
+          ? createDto.carrera.trim()
+          : 'N/A';
+
+      // Buscar si el usuario ya existe por email o CI
       let usuario = await userManagerRepo.findOne({
-        where: { email: createDto.correoElectronico },
+        where: [{ email: emailNormalizado }, { ci: ciLimpio }],
       });
 
       if (!usuario) {
+        const rawPassword = `Postulante_${ciLimpio}_${anioActual}!`;
+        const salt = await bcrypt.genSalt(10);
+        const passwordHash = await bcrypt.hash(rawPassword, salt);
+
         usuario = userManagerRepo.create({
-          email: createDto.correoElectronico,
-          password: `Postulante_${createDto.ci}_${anioActual}`,
+          email: emailNormalizado,
+          passwordHash: passwordHash,
+          password: rawPassword,
           rol: RolUsuario.POSTULANTE,
-          nombres: createDto.nombres,
-          primerApellido: createDto.primerApellido,
-          segundoApellido: createDto.segundoApellido,
-          ci: createDto.ci,
+          nombres: createDto.nombres?.trim(),
+          primerApellido: createDto.primerApellido?.trim(),
+          segundoApellido: createDto.segundoApellido?.trim() || undefined,
+          ci: ciLimpio,
+          telefono: createDto.celular?.trim() || undefined,
+          carrera: carreraFinal,
           activo: true,
         });
+        usuario.passwordHash = passwordHash;
+        usuario = await userManagerRepo.save(usuario);
+      } else if (!usuario.passwordHash) {
+        const rawPassword = `Postulante_${ciLimpio}_${anioActual}!`;
+        const salt = await bcrypt.genSalt(10);
+        usuario.passwordHash = await bcrypt.hash(rawPassword, salt);
         usuario = await userManagerRepo.save(usuario);
       }
 
       const codigo = await this.generarCodigoPostulacion(manager);
 
-      const carreraFinal =
-        createDto.carrera && createDto.carrera.trim() !== ''
-          ? createDto.carrera
-          : 'N/A';
-
       const postulacion = postulacionManagerRepo.create({
         ...createDto,
+        edadCalculada: createDto.edad,
         carrera: carreraFinal,
         codigoPostulacion: codigo,
         requiereAutorizacionPadres: esMenorDeEdad,
@@ -122,6 +140,7 @@ export class PostulacionesService {
         estado: EstadoPostulacion.PENDIENTE,
         userId: usuario.id,
       });
+      postulacion.edadCalculada = createDto.edad;
 
       return await postulacionManagerRepo.save(postulacion);
     });

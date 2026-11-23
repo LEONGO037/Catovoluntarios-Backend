@@ -20,6 +20,13 @@ export class UserEntity extends BaseEntity {
   @Column({ type: 'varchar', length: 255, name: 'password_hash' })
   passwordHash: string;
 
+  get password_hash(): string {
+    return this.passwordHash;
+  }
+  set password_hash(val: string) {
+    this.passwordHash = val;
+  }
+
   get password(): string {
     return this.passwordHash;
   }
