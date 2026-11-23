@@ -12,16 +12,8 @@ export const dataSourceOptions: DataSourceOptions = {
   username: process.env.DATABASE_USER || 'postgres',
   password: process.env.DATABASE_PASSWORD || 'postgres',
   database: process.env.DATABASE_NAME || 'catovoluntarios_db',
-  entities: [
-    join(__dirname, '/../**/*.entity{.ts,.js}'),
-    'dist/**/*.entity.js',
-    'src/**/*.entity.ts',
-  ],
-  migrations: [
-    join(__dirname, '/migrations/*{.ts,.js}'),
-    'dist/database/migrations/*.js',
-    'src/database/migrations/*.ts',
-  ],
+  entities: [join(__dirname, '/../**/*.entity{.ts,.js}')],
+  migrations: [join(__dirname, '/migrations/*{.ts,.js}')],
   synchronize: false,
   logging: process.env.NODE_ENV === 'development',
   ssl:
@@ -39,16 +31,8 @@ export const getTypeOrmConfig = (
   username: configService.get<string>('DATABASE_USER', 'postgres'),
   password: configService.get<string>('DATABASE_PASSWORD', 'postgres'),
   database: configService.get<string>('DATABASE_NAME', 'catovoluntarios_db'),
-  entities: [
-    join(__dirname, '/../**/*.entity{.ts,.js}'),
-    'dist/**/*.entity.js',
-    'src/**/*.entity.ts',
-  ],
-  migrations: [
-    join(__dirname, '/migrations/*{.ts,.js}'),
-    'dist/database/migrations/*.js',
-    'src/database/migrations/*.ts',
-  ],
+  entities: [join(__dirname, '/../**/*.entity{.ts,.js}')],
+  migrations: [join(__dirname, '/migrations/*{.ts,.js}')],
   synchronize: false,
   logging: configService.get<string>('NODE_ENV') === 'development',
   ssl:
