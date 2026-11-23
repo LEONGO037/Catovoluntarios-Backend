@@ -204,13 +204,24 @@ export class DocumentosService {
         const u = doc.usuario;
         const asig = asignacionesMap.get(doc.userId);
         voluntariosMap.set(doc.userId, {
+          id: doc.userId,
           userId: doc.userId,
           ci: u?.ci || 'Sin CI',
+          nombres: u?.nombres || '',
+          primerApellido: u?.primerApellido || '',
+          segundoApellido: u?.segundoApellido || '',
+          email: u?.email || '',
+          telefono: u?.telefono || '',
+          edad: 20,
+          esMenor: false,
+          rol: u?.rol || 'VOLUNTARIO',
           nombreCompleto: u ? `${u.nombres} ${u.primerApellido} ${u.segundoApellido || ''}`.trim() : 'Voluntario',
           carrera: u?.carrera || 'Carrera no registrada',
           proyectoAsignado: asig?.proyecto?.nombreProyecto || 'Sin asignar',
           polizaValidada: asig?.polizaValidada || false,
+          induccionCompletada: false,
           habilitadoCampo: asig?.habilitadoCampo || false,
+          estadoGeneral: 'PENDIENTE',
           documentos: [],
         });
       }
@@ -218,6 +229,15 @@ export class DocumentosService {
     }
 
     const items = Array.from(voluntariosMap.values());
+    for (const item of items) {
+      if (item.documentos.some((d: any) => d.estado === EstadoDocumento.OBSERVADO)) {
+        item.estadoGeneral = 'OBSERVADO';
+      } else if (item.documentos.length > 0 && item.documentos.every((d: any) => d.estado === EstadoDocumento.APROBADO)) {
+        item.estadoGeneral = 'APROBADO';
+      } else {
+        item.estadoGeneral = 'PENDIENTE';
+      }
+    }
 
     return {
       kpis: {

@@ -23,7 +23,7 @@ export function obtenerAgendaConfig(): AgendaConfig {
     dias: dias.length > 0 ? dias : [1, 2, 3, 4, 5],
     horaInicio: process.env.AGENDA_HORA_INICIO ?? '12:00',
     horaFin: process.env.AGENDA_HORA_FIN ?? '17:00',
-    duracionMinutos: parseInt(process.env.AGENDA_DURACION_MINUTOS ?? '20', 10) || 20,
+    duracionMinutos: parseInt(process.env.AGENDA_DURACION_MINUTOS ?? '30', 10) || 30,
     zonaHoraria: process.env.AGENDA_ZONA_HORARIA ?? '-04:00',
   };
 }

@@ -187,12 +187,33 @@ export class PostulacionesService {
     const [items, total] = await qb.getManyAndCount();
 
     return {
-      items,
+      items: items.map((item) => this.formatPostulacion(item)),
       total,
       page,
       limit,
       totalPages: Math.ceil(total / limit) || 1,
     };
+  }
+
+  private formatPostulacion(p: PostulacionEntity): PostulacionEntity {
+    const parseSafe = (val: any): string[] => {
+      if (!val) return [];
+      if (Array.isArray(val)) return val;
+      if (typeof val === 'string') {
+        try {
+          const parsed = JSON.parse(val);
+          if (Array.isArray(parsed)) return parsed;
+        } catch {
+          return val.split(',').map((s: string) => s.trim()).filter(Boolean);
+        }
+      }
+      return [];
+    };
+
+    p.poblacionesInteres = parseSafe(p.poblacionesInteres);
+    p.habilidadesDestacadas = parseSafe(p.habilidadesDestacadas);
+    p.tresPalabrasPersonalidad = parseSafe(p.tresPalabrasPersonalidad);
+    return p;
   }
 
   /**
@@ -236,7 +257,7 @@ export class PostulacionesService {
     if (!postulacion) {
       throw new NotFoundException(`Postulación con identificador ${id} no encontrada`);
     }
-    return postulacion;
+    return this.formatPostulacion(postulacion);
   }
 
   async findByCodigo(codigo: string): Promise<PostulacionEntity> {
@@ -248,7 +269,7 @@ export class PostulacionesService {
         `Postulación con código ${codigo} no encontrada`,
       );
     }
-    return postulacion;
+    return this.formatPostulacion(postulacion);
   }
 
   /**

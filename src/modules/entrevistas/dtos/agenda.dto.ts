@@ -19,6 +19,13 @@ export class AgendarEntrevistaDto {
   /** Inicio de la franja elegida, en ISO 8601 (tal como lo devuelve /disponibilidad). */
   @IsISO8601({ strict: true }, { message: 'fechaHora debe ser una fecha ISO 8601 válida' })
   fechaHora: string;
+
+  /** Opcional: Para cuando un Administrador o Catolíder agenda en nombre de un postulante */
+  @IsOptional()
+  postulacionId?: number;
+
+  @IsOptional()
+  catoliderId?: number;
 }
 
 export class ReprogramarEntrevistaDto {

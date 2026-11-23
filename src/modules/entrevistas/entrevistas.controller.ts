@@ -45,7 +45,7 @@ export class EntrevistasController {
   }
 
   @Post('agendar')
-  @Roles(Role.POSTULANTE)
+  @Roles(Role.ADMIN_PASTORAL, Role.CATOLIDER, Role.POSTULANTE)
   agendar(
     @CurrentUser() usuario: UsuarioAutenticado,
     @Body() dto: AgendarEntrevistaDto,

@@ -134,19 +134,27 @@ export class EntrevistasService {
   }
 
   async agendar(usuario: UsuarioAutenticado, dto: AgendarEntrevistaDto): Promise<CitaVista> {
-    const postulacion = await this.lecturas.obtenerPostulacionActivaDeUsuario(usuario.id);
-    if (!postulacion) {
-      throw new NotFoundException('No tienes una postulación registrada en el semestre activo');
+    let postulacionId: number;
+    if ((usuario.rol === Role.ADMIN_PASTORAL || usuario.rol === Role.CATOLIDER) && dto.postulacionId) {
+      const p = await this.lecturas.obtenerPostulante(dto.postulacionId);
+      postulacionId = p.postulacionId;
+    } else {
+      const postulacion = await this.lecturas.obtenerPostulacionActivaDeUsuario(usuario.id);
+      if (!postulacion) {
+        throw new NotFoundException('No tienes una postulación registrada en el semestre activo');
+      }
+      if (postulacion.estadoPostulacion !== ESTADO_POSTULACION_HABILITADA) {
+        throw new BadRequestException('Tu postulación todavía no está habilitada para la entrevista');
+      }
+      postulacionId = postulacion.postulacionId;
     }
-    if (postulacion.estadoPostulacion !== ESTADO_POSTULACION_HABILITADA) {
-      throw new BadRequestException('Tu postulación todavía no está habilitada para la entrevista');
-    }
+
     const existente = await this.entrevistas.findOne({
-      where: { postulacionId: postulacion.postulacionId },
+      where: { postulacionId },
     });
     if (existente) {
       throw new ConflictException(
-        'Ya tienes una entrevista registrada. Si necesitas cambiarla, usa la opción Reprogramar.',
+        'Ya existe una entrevista registrada para esta postulación. Si necesitas cambiarla, usa la opción Reprogramar.',
       );
     }
     const fechaHora = this.validarFranja(dto.fechaHora);
@@ -154,9 +162,9 @@ export class EntrevistasService {
     try {
       const guardada = await this.dataSource.transaction(async (manager) => {
         await this.bloquearFranja(manager, fechaHora);
-        const catoliderId = await this.elegirCatolider(manager, fechaHora, null, null);
+        const catoliderId = dto.catoliderId ?? (await this.elegirCatolider(manager, fechaHora, null, null));
         const nueva = manager.create(EntrevistaEntity, {
-          postulacionId: postulacion.postulacionId,
+          postulacionId,
           catoliderId,
           fechaHoraProgramada: fechaHora,
           estado: EstadoCitaEntrevista.PROGRAMADA,
@@ -166,7 +174,7 @@ export class EntrevistasService {
       return this.aVista(guardada, usuario);
     } catch (error) {
       if (esViolacionUnica(error)) {
-        throw new ConflictException('Ya tienes una entrevista registrada');
+        throw new ConflictException('Ya existe una entrevista registrada para esta postulación');
       }
       throw error;
     }

@@ -114,10 +114,10 @@ export class LecturasExternasService {
     return mapa;
   }
 
-  /** Catolíderes activos del semestre activo (tabla catolideres_semestre). */
+  /** Catolíderes activos del semestre activo (tabla catolideres_semestre o fallback a usuarios). */
   async listarCatoliderActivos(): Promise<CatoliderActivo[]> {
     const semestreId = await this.obtenerSemestreActivoId();
-    const filas: { user_id: number; nombre_completo: string }[] = await this.dataSource.query(
+    let filas: { user_id: number; nombre_completo: string }[] = await this.dataSource.query(
       `SELECT u.id AS user_id,
               concat_ws(' ', u.nombres, u.primer_apellido, u.segundo_apellido) AS nombre_completo
          FROM catolideres_semestre cs
@@ -127,6 +127,24 @@ export class LecturasExternasService {
         ORDER BY u.id`,
       [semestreId],
     );
+    if (filas.length === 0) {
+      filas = await this.dataSource.query(
+        `SELECT u.id AS user_id,
+                concat_ws(' ', u.nombres, u.primer_apellido, u.segundo_apellido) AS nombre_completo
+           FROM usuarios u
+          WHERE u.activo = TRUE AND (u.rol = 'CATOLIDER' OR u.es_catolider_vigente = TRUE)
+          ORDER BY u.id`,
+      );
+    }
+    if (filas.length === 0) {
+      filas = await this.dataSource.query(
+        `SELECT u.id AS user_id,
+                concat_ws(' ', u.nombres, u.primer_apellido, u.segundo_apellido) AS nombre_completo
+           FROM usuarios u
+          WHERE u.activo = TRUE AND u.rol = 'ADMIN_PASTORAL'
+          ORDER BY u.id`,
+      );
+    }
     return filas.map((f) => ({ userId: f.user_id, nombreCompleto: f.nombre_completo }));
   }
 
