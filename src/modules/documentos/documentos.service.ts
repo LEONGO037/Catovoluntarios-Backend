@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
@@ -13,6 +18,8 @@ import {
 } from './entities/asistencia-induccion.entity';
 import { AsignacionUbicacionEntity } from '../ubicacion/entities/asignacion-ubicacion.entity';
 import { UserEntity } from '../users/entities/user.entity';
+import { Role } from '../../common/enums/role.enum';
+import { StorageService } from '../storage/storage.service';
 import { UploadDocumentoDto } from './dtos/upload-documento.dto';
 import { ValidarDocumentoDto } from './dtos/validar-documento.dto';
 import { CreateSesionInduccionDto } from './dtos/create-sesion-induccion.dto';
@@ -35,6 +42,8 @@ export class DocumentosService {
 
     @InjectRepository(UserEntity)
     private readonly userRepo: Repository<UserEntity>,
+
+    private readonly storageService: StorageService,
   ) {}
 
   async obtenerMisDocumentos(userId: number) {
@@ -85,7 +94,29 @@ export class DocumentosService {
     };
   }
 
-  async subirDocumento(userId: number, dto: UploadDocumentoDto) {
+  async subirDocumento(
+    userId: number,
+    dto: UploadDocumentoDto,
+    file?: Express.Multer.File,
+  ) {
+    let archivoUrl = dto.archivoUrl;
+    let nombreArchivoOriginal = dto.nombreArchivoOriginal;
+
+    if (file) {
+      const uploadRes = await this.storageService.uploadFile(
+        file,
+        `documentos/usuario_${userId}`,
+      );
+      archivoUrl = uploadRes.url;
+      nombreArchivoOriginal = uploadRes.nombreArchivo;
+    }
+
+    if (!archivoUrl) {
+      throw new BadRequestException(
+        'Debe proporcionar un archivo físico o un enlace de documento válido.',
+      );
+    }
+
     let doc = await this.docRepo.findOne({
       where: { userId, tipoDocumento: dto.tipoDocumento, semestre: '2/2026' },
     });
@@ -98,8 +129,8 @@ export class DocumentosService {
       });
     }
 
-    doc.archivoUrl = dto.archivoUrl;
-    doc.nombreArchivoOriginal = dto.nombreArchivoOriginal || 'archivo_adjunto.pdf';
+    doc.archivoUrl = archivoUrl;
+    doc.nombreArchivoOriginal = nombreArchivoOriginal || 'documento_adjunto.pdf';
     doc.numeroPoliza = dto.numeroPoliza;
     doc.idPoliza = dto.idPoliza;
     doc.numeroCertificado = dto.numeroCertificado;
@@ -110,6 +141,46 @@ export class DocumentosService {
     doc.observacionesValidacion = undefined;
 
     return this.docRepo.save(doc);
+  }
+
+  async eliminarDocumento(id: number, user: any) {
+    const doc = await this.docRepo.findOne({ where: { id } });
+    if (!doc) {
+      throw new NotFoundException(`Documento con ID ${id} no encontrado`);
+    }
+
+    const esDuenio = doc.userId === user.id;
+    const esAdmin = user.rol === Role.ADMIN_PASTORAL;
+
+    if (!esDuenio && !esAdmin) {
+      throw new ForbiddenException(
+        'No tienes autorización para eliminar este documento. Solo el propietario o Pastoral pueden realizar esta acción.',
+      );
+    }
+
+    // Eliminar el objeto de Cloudflare R2 / almacenamiento
+    if (doc.archivoUrl) {
+      await this.storageService.deleteFile(doc.archivoUrl);
+    }
+
+    await this.docRepo.remove(doc);
+
+    // Si el documento eliminado correspondía a la póliza, invalidar el seguro en la asignación
+    if (doc.tipoDocumento === TipoDocumento.POLIZA_ACCIDENTES_APC7083) {
+      const asignacion = await this.asignacionRepo.findOne({
+        where: { idUsuario: doc.userId, semestre: '2/2026' },
+      });
+      if (asignacion) {
+        asignacion.polizaValidada = false;
+        asignacion.habilitadoCampo = false;
+        await this.asignacionRepo.save(asignacion);
+      }
+    }
+
+    return {
+      mensaje: 'Documento eliminado correctamente del expediente y almacenamiento.',
+      id,
+    };
   }
 
   async obtenerBandejaValidacion() {

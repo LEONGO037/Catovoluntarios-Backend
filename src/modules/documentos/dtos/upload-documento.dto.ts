@@ -7,8 +7,8 @@ export class UploadDocumentoDto {
   tipoDocumento: TipoDocumento;
 
   @IsString()
-  @IsNotEmpty()
-  archivoUrl: string;
+  @IsOptional()
+  archivoUrl?: string;
 
   @IsString()
   @IsOptional()

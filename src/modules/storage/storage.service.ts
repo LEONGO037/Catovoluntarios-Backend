@@ -1,0 +1,197 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+} from '@aws-sdk/client-s3';
+import * as path from 'path';
+import * as crypto from 'crypto';
+import * as fs from 'fs';
+
+export interface UploadResult {
+  url: string;
+  key: string;
+  nombreArchivo: string;
+  tamanioBytes: number;
+  mimeType: string;
+}
+
+@Injectable()
+export class StorageService {
+  private readonly logger = new Logger(StorageService.name);
+  private readonly s3Client: S3Client | null = null;
+  private readonly bucketName: string;
+  private readonly publicUrl: string;
+  private readonly isR2Enabled: boolean = false;
+  private readonly localStorageDir: string;
+
+  constructor(private readonly configService: ConfigService) {
+    const accountId = this.configService.get<string>('R2_ACCOUNT_ID');
+    const accessKeyId = this.configService.get<string>('R2_ACCESS_KEY_ID');
+    const secretAccessKey = this.configService.get<string>('R2_SECRET_ACCESS_KEY');
+    this.bucketName =
+      this.configService.get<string>('R2_BUCKET_NAME') || 'catovoluntarios-documentos';
+    this.publicUrl = (
+      this.configService.get<string>('R2_PUBLIC_URL') || ''
+    ).replace(/\/$/, '');
+
+    // Directorio de respaldo local si R2 no está configurado aún
+    this.localStorageDir = path.join(process.cwd(), 'uploads');
+
+    const hasValidCredentials =
+      Boolean(accountId) &&
+      Boolean(accessKeyId) &&
+      Boolean(secretAccessKey) &&
+      accessKeyId !== 'tu_r2_access_key_id' &&
+      secretAccessKey !== 'tu_r2_secret_access_key' &&
+      !accessKeyId?.includes('aqui');
+
+    if (hasValidCredentials) {
+      try {
+        this.s3Client = new S3Client({
+          region: 'auto',
+          endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+          credentials: {
+            accessKeyId: accessKeyId!,
+            secretAccessKey: secretAccessKey!,
+          },
+        });
+        this.isR2Enabled = true;
+        this.logger.log(
+          `☁️ Cloudflare R2 inicializado con éxito. Bucket: [${this.bucketName}].`,
+        );
+      } catch (error) {
+        this.logger.error('❌ Error al inicializar cliente Cloudflare R2:', error);
+      }
+    } else {
+      this.logger.warn(
+        '⚠️ Cloudflare R2 no está configurado o tiene credenciales demo. Los archivos se almacenarán temporalmente en local (./uploads) sin interrumpir el funcionamiento.',
+      );
+    }
+  }
+
+  isConfigured(): boolean {
+    return this.isR2Enabled && this.s3Client !== null;
+  }
+
+  /**
+   * Sube un archivo a Cloudflare R2 (o almacenamiento local de respaldo)
+   * Genera un identificador único y sanitiza el nombre para evitar path traversal o sobrescritura
+   */
+  async uploadFile(
+    file: Express.Multer.File,
+    folder = 'documentos',
+  ): Promise<UploadResult> {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const safeBaseName = path
+      .basename(file.originalname, ext)
+      .replace(/[^a-zA-Z0-9_\-]/g, '_')
+      .substring(0, 60);
+
+    const uniqueId = crypto.randomUUID();
+    const key = `${folder}/${Date.now()}-${uniqueId}-${safeBaseName}${ext}`;
+
+    if (this.isConfigured() && this.s3Client) {
+      try {
+        const command = new PutObjectCommand({
+          Bucket: this.bucketName,
+          Key: key,
+          Body: file.buffer,
+          ContentType: file.mimetype || 'application/octet-stream',
+          Metadata: {
+            originalName: encodeURIComponent(file.originalname),
+            uploadedAt: new Date().toISOString(),
+          },
+        });
+
+        await this.s3Client.send(command);
+
+        const fileUrl = this.publicUrl
+          ? `${this.publicUrl}/${key}`
+          : `https://${this.bucketName}.r2.cloudflarestorage.com/${key}`;
+
+        this.logger.log(`✅ Archivo subido exitosamente a R2: [${key}]`);
+
+        return {
+          url: fileUrl,
+          key,
+          nombreArchivo: file.originalname,
+          tamanioBytes: file.size,
+          mimeType: file.mimetype,
+        };
+      } catch (error) {
+        this.logger.error(`❌ Error al subir archivo [${key}] a R2:`, error);
+        throw new Error(`Error al subir el archivo al almacenamiento en la nube: ${error?.message || error}`);
+      }
+    }
+
+    // Modo respaldo local si no hay credenciales R2 aún
+    try {
+      if (!fs.existsSync(this.localStorageDir)) {
+        fs.mkdirSync(this.localStorageDir, { recursive: true });
+      }
+      const localFilePath = path.join(this.localStorageDir, `${uniqueId}-${safeBaseName}${ext}`);
+      fs.writeFileSync(localFilePath, file.buffer);
+
+      const localUrl = `/uploads/${uniqueId}-${safeBaseName}${ext}`;
+      this.logger.log(`📁 Archivo almacenado localmente en respaldo: [${localFilePath}]`);
+
+      return {
+        url: localUrl,
+        key: `local/${uniqueId}-${safeBaseName}${ext}`,
+        nombreArchivo: file.originalname,
+        tamanioBytes: file.size,
+        mimeType: file.mimetype,
+      };
+    } catch (localError) {
+      this.logger.error('❌ Error al guardar archivo en almacenamiento local:', localError);
+      throw new Error('Error al procesar el archivo en el servidor.');
+    }
+  }
+
+  /**
+   * Elimina un archivo de Cloudflare R2 (o almacenamiento local)
+   */
+  async deleteFile(fileUrlOrKey: string): Promise<boolean> {
+    if (!fileUrlOrKey) return true;
+
+    // Extraer la clave S3 a partir de la URL o key
+    let key = fileUrlOrKey;
+    if (this.publicUrl && fileUrlOrKey.startsWith(this.publicUrl)) {
+      key = fileUrlOrKey.replace(`${this.publicUrl}/`, '');
+    } else if (fileUrlOrKey.includes('.r2.cloudflarestorage.com/')) {
+      const parts = fileUrlOrKey.split('.r2.cloudflarestorage.com/');
+      key = parts[1] || fileUrlOrKey;
+    }
+
+    if (this.isConfigured() && this.s3Client && !key.startsWith('/uploads/') && !key.startsWith('local/')) {
+      try {
+        const command = new DeleteObjectCommand({
+          Bucket: this.bucketName,
+          Key: key,
+        });
+        await this.s3Client.send(command);
+        this.logger.log(`🗑️ Archivo eliminado de R2: [${key}]`);
+        return true;
+      } catch (error) {
+        this.logger.error(`❌ Error al eliminar archivo [${key}] de R2:`, error);
+        return false;
+      }
+    }
+
+    // Si era local
+    try {
+      const fileName = path.basename(key);
+      const localPath = path.join(this.localStorageDir, fileName);
+      if (fs.existsSync(localPath)) {
+        fs.unlinkSync(localPath);
+        this.logger.log(`🗑️ Archivo local eliminado: [${localPath}]`);
+      }
+      return true;
+    } catch (err) {
+      this.logger.warn(`No se pudo eliminar archivo local [${key}]:`, err);
+      return false;
+    }
+  }
+}

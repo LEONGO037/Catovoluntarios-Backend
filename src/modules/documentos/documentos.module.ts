@@ -7,6 +7,7 @@ import { SesionInduccionEntity } from './entities/sesion-induccion.entity';
 import { AsistenciaInduccionEntity } from './entities/asistencia-induccion.entity';
 import { AsignacionUbicacionEntity } from '../ubicacion/entities/asignacion-ubicacion.entity';
 import { UserEntity } from '../users/entities/user.entity';
+import { StorageModule } from '../storage/storage.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { UserEntity } from '../users/entities/user.entity';
       AsignacionUbicacionEntity,
       UserEntity,
     ]),
+    StorageModule,
   ],
   controllers: [DocumentosController],
   providers: [DocumentosService],

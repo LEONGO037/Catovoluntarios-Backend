@@ -3,12 +3,19 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Body,
   Param,
   Query,
   UseGuards,
   ParseIntPipe,
+  UseInterceptors,
+  UploadedFile,
+  ParseFilePipe,
+  MaxFileSizeValidator,
+  FileTypeValidator,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { DocumentosService } from './documentos.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -34,11 +41,33 @@ export class DocumentosController {
 
   @Post('upload')
   @Roles(Role.VOLUNTARIO, Role.POSTULANTE, Role.CATOLIDER, Role.ADMIN_PASTORAL)
+  @UseInterceptors(FileInterceptor('file'))
   async subirDocumento(
     @CurrentUser() user: any,
     @Body() dto: UploadDocumentoDto,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 10 * 1024 * 1024 }), // 10 MB límite
+          new FileTypeValidator({
+            fileType: /(pdf|jpg|jpeg|png|webp|msword|vnd.openxmlformats-officedocument.wordprocessingml.document)$/i,
+          }),
+        ],
+        fileIsRequired: false,
+      }),
+    )
+    file?: Express.Multer.File,
   ) {
-    return this.documentosService.subirDocumento(user.id, dto);
+    return this.documentosService.subirDocumento(user.id, dto, file);
+  }
+
+  @Delete(':id')
+  @Roles(Role.VOLUNTARIO, Role.POSTULANTE, Role.CATOLIDER, Role.ADMIN_PASTORAL)
+  async eliminarDocumento(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: any,
+  ) {
+    return this.documentosService.eliminarDocumento(id, user);
   }
 
   @Public()
