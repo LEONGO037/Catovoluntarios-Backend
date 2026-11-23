@@ -11,7 +11,7 @@ export default registerAs(
     password: process.env.DATABASE_PASSWORD || 'postgres',
     database: process.env.DATABASE_NAME || 'catovoluntarios_db',
     autoLoadEntities: true,
-    synchronize: process.env.NODE_ENV === 'development', // Solo en desarrollo; en prod usar migraciones
+    synchronize: process.env.DATABASE_SYNCHRONIZE === 'true', // Usar solo si se indica explícitamente en .env
     logging: process.env.NODE_ENV === 'development',
     ssl:
       process.env.DATABASE_SSL === 'true'
