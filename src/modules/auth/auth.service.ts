@@ -75,7 +75,7 @@ export class AuthService {
       return {
         success: true,
         message:
-          'Si el correo está registrado en Pastoral, se ha enviado un correo mediante Resend con las instrucciones de recuperación (válido por 15 minutos).',
+          'Si el correo está registrado en Pastoral, se ha enviado un correo con las instrucciones de recuperación (válido por 15 minutos).',
       };
     }
 
@@ -85,7 +85,7 @@ export class AuthService {
       { expiresIn: '15m' },
     );
 
-    // Envío del correo institucional mediante el servicio de Resend
+    // Envío del correo institucional mediante el servicio de correo
     await this.mailService.sendPasswordResetEmail(
       user.email,
       user.nombres,
@@ -95,8 +95,8 @@ export class AuthService {
     return {
       success: true,
       message:
-        'Se ha enviado un correo electrónico mediante Resend con tu enlace seguro de recuperación de contraseña.',
-      resetToken, // Retornado también en la respuesta JSON para facilitar pruebas locales inmediatas
+        'Se ha enviado un correo electrónico con tu enlace seguro de recuperación de contraseña.',
+      resetToken,
     };
   }
 
