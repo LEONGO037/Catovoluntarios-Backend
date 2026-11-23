@@ -14,6 +14,8 @@ import { SemaforosModule } from './modules/semaforos/semaforos.module';
 import { PostulacionesModule } from './modules/postulaciones/postulaciones.module';
 import { ProyectosModule } from './modules/proyectos/proyectos.module';
 import { UbicacionModule } from './modules/ubicacion/ubicacion.module';
+import { EntrevistasModule } from './modules/entrevistas/entrevistas.module';
+import { SimuladosM03Module } from './simulados-m03/simulados-m03.module';
 
 @Module({
   imports: [
@@ -43,6 +45,8 @@ import { UbicacionModule } from './modules/ubicacion/ubicacion.module';
     PostulacionesModule,
     ProyectosModule,
     UbicacionModule,
+    EntrevistasModule,
+    SimuladosM03Module,
   ],
   controllers: [AppController],
   providers: [AppService],

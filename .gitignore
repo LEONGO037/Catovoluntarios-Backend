@@ -28,5 +28,5 @@ Thumbs.db
 *.swp
 *.swo
 
-# Local storage uploads fallback
+# Archivos subidos en desarrollo / local storage uploads
 uploads/
