@@ -7,10 +7,11 @@ import {
 } from 'typeorm';
 
 export enum MotivoTraslado {
-  CRUCE_MATERIAS = 'Cruce con materias universitarias',
-  DIFICULTAD_TRANSPORTE = 'Dificultad de transporte/distancia',
-  SOLICITUD_SUPERVISOR = 'Solicitud de supervisor del centro',
-  INCOMPATIBILIDAD_PERFIL = 'Incompatibilidad de perfil',
+  CRUCE_MATERIAS = 'CRUCE_MATERIAS_UNIVERSITARIAS',
+  DIFICULTAD_TRANSPORTE = 'DIFICULTAD_TRANSPORTE_DISTANCIA',
+  SOLICITUD_SUPERVISOR = 'SOLICITUD_SUPERVISOR_CENTRO',
+  INCOMPATIBILIDAD_PERFIL = 'INCOMPATIBILIDAD_PERFIL',
+  OTRO_JUSTIFICADO = 'OTRO_JUSTIFICADO',
 }
 
 @Entity('historial_reasignaciones')
@@ -33,6 +34,7 @@ export class HistorialReasignacionEntity {
   @Column({
     type: 'enum',
     enum: MotivoTraslado,
+    enumName: 'motivo_traslado_enum',
   })
   motivo_traslado: MotivoTraslado;
 

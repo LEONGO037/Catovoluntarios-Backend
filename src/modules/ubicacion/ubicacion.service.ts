@@ -237,11 +237,11 @@ export class UbicacionService {
   ): Promise<EstudianteDemografico[]> {
     const asignacionesActivas = await this.asignacionRepository.find({
       where: { estado: EstadoAsignacion.ACTIVO },
-      select: { id_usuario: true },
+      select: { idUsuario: true } as any,
     });
 
     const usuariosUbicados = new Set(
-      asignacionesActivas.map((a) => a.id_usuario),
+      asignacionesActivas.map((a: any) => a.idUsuario ?? a.id_usuario),
     );
 
     return this.catalogoEstudiantes.filter((estudiante) => {
@@ -287,7 +287,7 @@ export class UbicacionService {
     idProyecto: number,
   ): Promise<VoluntarioAsignadoDetalle[]> {
     const proyecto = await this.proyectoRepository.findOne({
-      where: { id_proyecto: idProyecto },
+      where: { id: idProyecto },
     });
     if (!proyecto) {
       throw new NotFoundException(
@@ -297,10 +297,10 @@ export class UbicacionService {
 
     const asignaciones = await this.asignacionRepository.find({
       where: {
-        id_proyecto: idProyecto,
+        idProyecto: idProyecto,
         estado: EstadoAsignacion.ACTIVO,
       },
-      order: { id_asignacion: 'ASC' },
+      order: { id: 'ASC' },
     });
 
     return asignaciones.map((a) => {
@@ -324,7 +324,7 @@ export class UbicacionService {
 
   async getBalanceDemografico(idProyecto: number): Promise<BalanceDemografico> {
     const proyecto = await this.proyectoRepository.findOne({
-      where: { id_proyecto: idProyecto },
+      where: { id: idProyecto },
     });
     if (!proyecto) {
       throw new NotFoundException(
@@ -421,7 +421,7 @@ export class UbicacionService {
   ): Promise<AsignacionUbicacionEntity> {
     return await this.dataSource.transaction(async (manager) => {
       const proyecto = await manager.findOne(ProyectoReceptorEntity, {
-        where: { id_proyecto: dto.id_proyecto },
+        where: { id: dto.id_proyecto },
       });
       if (!proyecto) {
         throw new NotFoundException(
@@ -436,7 +436,7 @@ export class UbicacionService {
 
       const asignadosActivos = await manager.count(AsignacionUbicacionEntity, {
         where: {
-          id_proyecto: dto.id_proyecto,
+          idProyecto: dto.id_proyecto,
           estado: EstadoAsignacion.ACTIVO,
         },
       });
@@ -449,10 +449,11 @@ export class UbicacionService {
 
       const yaAsignado = await manager.findOne(AsignacionUbicacionEntity, {
         where: {
+          idUsuario: dto.id_usuario,
           id_usuario: dto.id_usuario,
           semestre: dto.semestre,
           estado: EstadoAsignacion.ACTIVO,
-        },
+        } as any,
       });
 
       if (yaAsignado) {
@@ -465,14 +466,24 @@ export class UbicacionService {
       const induccionCompletada = Boolean(dto.induccion_completada);
       const habilitadoCampo = polizaValidada && induccionCompletada;
 
+      const rawCond = String(dto.condicion || '').toUpperCase();
+      const condicionFinal = rawCond.includes('ANTIGUO')
+        ? CondicionVoluntario.ANTIGUO
+        : CondicionVoluntario.NUEVO;
+
       const nuevaAsignacion = manager.create(AsignacionUbicacionEntity, {
+        idUsuario: dto.id_usuario,
         id_usuario: dto.id_usuario,
+        idProyecto: dto.id_proyecto,
         id_proyecto: dto.id_proyecto,
         semestre: dto.semestre,
-        condicion: dto.condicion,
+        condicion: condicionFinal,
         horario_comprometido: dto.horario_comprometido,
+        polizaValidada: polizaValidada,
         poliza_validada: polizaValidada,
+        induccionCompletada: induccionCompletada,
         induccion_completada: induccionCompletada,
+        habilitadoCampo: habilitadoCampo,
         habilitado_campo: habilitadoCampo,
         estado: EstadoAsignacion.ACTIVO,
       });
@@ -512,7 +523,7 @@ export class UbicacionService {
   async bajaUbicacion(idAsignacion: number): Promise<{ message: string }> {
     return await this.dataSource.transaction(async (manager) => {
       const asignacion = await manager.findOne(AsignacionUbicacionEntity, {
-        where: { id_asignacion: idAsignacion },
+        where: { id: idAsignacion, id_asignacion: idAsignacion } as any,
         relations: { proyecto: true },
       });
       if (!asignacion) {
@@ -576,7 +587,10 @@ export class UbicacionService {
       const asignacionOrigen = await manager.findOne(
         AsignacionUbicacionEntity,
         {
-          where: { id_asignacion: dto.id_asignacion_origen },
+          where: {
+            id: dto.id_asignacion_origen,
+            id_asignacion: dto.id_asignacion_origen,
+          } as any,
           relations: { proyecto: true },
         },
       );
@@ -609,7 +623,10 @@ export class UbicacionService {
       }
 
       const proyectoDestino = await manager.findOne(ProyectoReceptorEntity, {
-        where: { id_proyecto: dto.id_proyecto_destino },
+        where: {
+          id: dto.id_proyecto_destino,
+          id_proyecto: dto.id_proyecto_destino,
+        } as any,
       });
       if (!proyectoDestino) {
         throw new NotFoundException(
@@ -624,7 +641,7 @@ export class UbicacionService {
 
       const asignadosDestino = await manager.count(AsignacionUbicacionEntity, {
         where: {
-          id_proyecto: dto.id_proyecto_destino,
+          idProyecto: dto.id_proyecto_destino,
           estado: EstadoAsignacion.ACTIVO,
         },
       });
@@ -639,28 +656,42 @@ export class UbicacionService {
       await manager.save(asignacionOrigen);
 
       const nuevaAsignacion = manager.create(AsignacionUbicacionEntity, {
-        id_usuario: asignacionOrigen.id_usuario,
-        id_proyecto: dto.id_proyecto_destino,
+        idUsuario: asignacionOrigen.id_usuario,
+        idProyecto: dto.id_proyecto_destino,
         semestre: asignacionOrigen.semestre,
         condicion: asignacionOrigen.condicion,
         horario_comprometido:
           dto.nuevo_horario_comprometido ||
           asignacionOrigen.horario_comprometido,
-        poliza_validada: asignacionOrigen.poliza_validada,
-        induccion_completada: asignacionOrigen.induccion_completada,
-        habilitado_campo:
+        polizaValidada: asignacionOrigen.poliza_validada,
+        induccionCompletada: asignacionOrigen.induccion_completada,
+        habilitadoCampo:
           asignacionOrigen.poliza_validada &&
           asignacionOrigen.induccion_completada,
         estado: EstadoAsignacion.ACTIVO,
       });
       const nuevaAsignacionGuardada = await manager.save(nuevaAsignacion);
 
+      const motivoMap: Record<string, MotivoTraslado> = {
+        'Cruce con materias universitarias': MotivoTraslado.CRUCE_MATERIAS,
+        'Dificultad de transporte/distancia': MotivoTraslado.DIFICULTAD_TRANSPORTE,
+        'Solicitud de supervisor del centro': MotivoTraslado.SOLICITUD_SUPERVISOR,
+        'Incompatibilidad de perfil': MotivoTraslado.INCOMPATIBILIDAD_PERFIL,
+        'Otro justificado': MotivoTraslado.OTRO_JUSTIFICADO,
+        CRUCE_MATERIAS_UNIVERSITARIAS: MotivoTraslado.CRUCE_MATERIAS,
+        DIFICULTAD_TRANSPORTE_DISTANCIA: MotivoTraslado.DIFICULTAD_TRANSPORTE,
+        SOLICITUD_SUPERVISOR_CENTRO: MotivoTraslado.SOLICITUD_SUPERVISOR,
+        INCOMPATIBILIDAD_PERFIL: MotivoTraslado.INCOMPATIBILIDAD_PERFIL,
+        OTRO_JUSTIFICADO: MotivoTraslado.OTRO_JUSTIFICADO,
+      };
+      const motivoFinal = motivoMap[dto.motivo_traslado] || MotivoTraslado.OTRO_JUSTIFICADO;
+
       const historial = manager.create(HistorialReasignacionEntity, {
         id_asignacion: asignacionOrigen.id_asignacion,
         id_usuario: asignacionOrigen.id_usuario,
         id_proyecto_origen: asignacionOrigen.id_proyecto,
         id_proyecto_destino: dto.id_proyecto_destino,
-        motivo_traslado: dto.motivo_traslado,
+        motivo_traslado: motivoFinal,
         fecha_efectiva: fechaEfectiva,
         observaciones: dto.observaciones || null,
         registrado_por_id: registradoPorId || null,
@@ -788,7 +819,7 @@ export class UbicacionService {
     induccionCompletada?: boolean,
   ): Promise<AsignacionUbicacionEntity> {
     const asignacion = await this.asignacionRepository.findOne({
-      where: { id_asignacion: idAsignacion },
+      where: { id: idAsignacion },
     });
     if (!asignacion) {
       throw new NotFoundException(

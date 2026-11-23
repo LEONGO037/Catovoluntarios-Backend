@@ -62,7 +62,10 @@ export class ProyectosService {
 
     const nuevoProyecto = this.proyectoRepository.create({
       ...createDto,
-      monto_pasaje_fijo: Number(createDto.monto_pasaje_fijo),
+      supervisor_nombre: createDto.nombre_supervisor_centro,
+      supervisor_telefono: createDto.telefono_contacto,
+      monto_pasaje_por_dia: Number(createDto.monto_pasaje_fijo),
+      cupo_maximo: createDto.cupo_maximo_voluntarios,
     });
 
     return await this.proyectoRepository.save(nuevoProyecto);
@@ -99,12 +102,12 @@ export class ProyectosService {
 
     if (filter.buscar) {
       queryBuilder.andWhere(
-        '(LOWER(proyecto.nombre_proyecto) LIKE LOWER(:buscar) OR LOWER(proyecto.nombre_supervisor_centro) LIKE LOWER(:buscar))',
+        '(LOWER(proyecto.nombre_proyecto) LIKE LOWER(:buscar) OR LOWER(proyecto.supervisor_nombre) LIKE LOWER(:buscar))',
         { buscar: `%${filter.buscar}%` },
       );
     }
 
-    queryBuilder.orderBy('proyecto.id_proyecto', 'ASC');
+    queryBuilder.orderBy('proyecto.id', 'ASC');
 
     const [proyectos, total] = await queryBuilder
       .skip(skip)
@@ -115,7 +118,7 @@ export class ProyectosService {
       proyectos.map(async (p) => {
         const activos = await this.asignacionRepository.count({
           where: {
-            id_proyecto: p.id_proyecto,
+            idProyecto: p.id,
             estado: EstadoAsignacion.ACTIVO,
           },
         });
@@ -165,7 +168,7 @@ export class ProyectosService {
 
   async findOne(id: number): Promise<ProyectoConOcupacion> {
     const p = await this.proyectoRepository.findOne({
-      where: { id_proyecto: id },
+      where: { id },
     });
     if (!p) {
       throw new NotFoundException(
@@ -175,7 +178,7 @@ export class ProyectosService {
 
     const activos = await this.asignacionRepository.count({
       where: {
-        id_proyecto: p.id_proyecto,
+        idProyecto: p.id,
         estado: EstadoAsignacion.ACTIVO,
       },
     });
@@ -216,7 +219,7 @@ export class ProyectosService {
     updateDto: UpdateProyectoReceptorDto,
   ): Promise<ProyectoReceptorEntity> {
     const proyecto = await this.proyectoRepository.findOne({
-      where: { id_proyecto: id },
+      where: { id },
     });
     if (!proyecto) {
       throw new NotFoundException(
@@ -241,7 +244,7 @@ export class ProyectosService {
     if (updateDto.cupo_maximo_voluntarios !== undefined) {
       const asignadosActivos = await this.asignacionRepository.count({
         where: {
-          id_proyecto: id,
+          idProyecto: id,
           estado: EstadoAsignacion.ACTIVO,
         },
       });
@@ -254,8 +257,17 @@ export class ProyectosService {
     }
 
     Object.assign(proyecto, updateDto);
+    if (updateDto.nombre_supervisor_centro) {
+      proyecto.supervisor_nombre = updateDto.nombre_supervisor_centro;
+    }
+    if (updateDto.telefono_contacto) {
+      proyecto.supervisor_telefono = updateDto.telefono_contacto;
+    }
+    if (updateDto.cupo_maximo_voluntarios !== undefined) {
+      proyecto.cupo_maximo = updateDto.cupo_maximo_voluntarios;
+    }
     if (updateDto.monto_pasaje_fijo !== undefined) {
-      proyecto.monto_pasaje_fijo = Number(updateDto.monto_pasaje_fijo);
+      proyecto.monto_pasaje_por_dia = Number(updateDto.monto_pasaje_fijo);
     }
 
     return await this.proyectoRepository.save(proyecto);
@@ -263,7 +275,7 @@ export class ProyectosService {
 
   async remove(id: number): Promise<{ message: string }> {
     const proyecto = await this.proyectoRepository.findOne({
-      where: { id_proyecto: id },
+      where: { id },
     });
     if (!proyecto) {
       throw new NotFoundException(
@@ -273,7 +285,7 @@ export class ProyectosService {
 
     const asignadosActivos = await this.asignacionRepository.count({
       where: {
-        id_proyecto: id,
+        idProyecto: id,
         estado: EstadoAsignacion.ACTIVO,
       },
     });

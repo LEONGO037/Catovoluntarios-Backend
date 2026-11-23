@@ -6,7 +6,7 @@ import {
   IsOptional,
   IsBoolean,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import { CondicionVoluntario } from '../entities/asignacion-ubicacion.entity';
 
 export class AsignarUbicacionDto {
@@ -24,6 +24,14 @@ export class AsignarUbicacionDto {
   @IsNotEmpty()
   semestre: string;
 
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      const v = value.toUpperCase();
+      if (v.includes('ANTIGUO')) return CondicionVoluntario.ANTIGUO;
+      if (v.includes('NUEVO')) return CondicionVoluntario.NUEVO;
+    }
+    return value;
+  })
   @IsEnum(CondicionVoluntario)
   condicion: CondicionVoluntario;
 

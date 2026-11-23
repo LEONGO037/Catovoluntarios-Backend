@@ -14,8 +14,8 @@ import { RegistroAsistenciaEntity } from '../../asistencia/entities/registro-asi
 import { ReporteSemaforoEntity } from '../../semaforos/entities/reporte-semaforo.entity';
 
 export enum CondicionVoluntario {
-  NUEVO = 'Nuevo',
-  ANTIGUO = 'Antiguo',
+  NUEVO = 'NUEVO',
+  ANTIGUO = 'ANTIGUO',
 }
 
 export enum EstadoAsignacion {
@@ -72,6 +72,7 @@ export class AsignacionUbicacionEntity {
   @Column({
     type: 'enum',
     enum: CondicionVoluntario,
+    enumName: 'condicion_voluntario_enum',
     default: CondicionVoluntario.NUEVO,
   })
   condicion: CondicionVoluntario;

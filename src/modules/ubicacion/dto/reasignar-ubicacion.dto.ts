@@ -6,7 +6,7 @@ import {
   IsOptional,
   IsString,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import { MotivoTraslado } from '../entities/historial-reasignacion.entity';
 
 export class ReasignarUbicacionDto {
@@ -20,6 +20,19 @@ export class ReasignarUbicacionDto {
   @IsNotEmpty()
   id_proyecto_destino: number;
 
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      const motivoMap: Record<string, MotivoTraslado> = {
+        'Cruce con materias universitarias': MotivoTraslado.CRUCE_MATERIAS,
+        'Dificultad de transporte/distancia': MotivoTraslado.DIFICULTAD_TRANSPORTE,
+        'Solicitud de supervisor del centro': MotivoTraslado.SOLICITUD_SUPERVISOR,
+        'Incompatibilidad de perfil': MotivoTraslado.INCOMPATIBILIDAD_PERFIL,
+        'Otro justificado': MotivoTraslado.OTRO_JUSTIFICADO,
+      };
+      if (motivoMap[value]) return motivoMap[value];
+    }
+    return value;
+  })
   @IsEnum(MotivoTraslado)
   motivo_traslado: MotivoTraslado;
 
