@@ -3,11 +3,18 @@ import {
   CanActivate,
   ExecutionContext,
   ForbiddenException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from '../decorators/roles.decorator';
+import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
+import { RequestUser } from '../decorators/get-user.decorator';
 import { Role } from '../enums/role.enum';
 
+/**
+ * Control de acceso por rol (RBAC). El rol se toma SOLO del JWT verificado por
+ * `AuthenticationGuard`; nunca de cabeceras enviadas por el cliente (x-role, x-user-rol).
+ */
 @Injectable()
 export class RolesGuard implements CanActivate {
   constructor(private reflector: Reflector) {}
@@ -17,22 +24,23 @@ export class RolesGuard implements CanActivate {
       ROLES_KEY,
       [context.getHandler(), context.getClass()],
     );
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
 
-    if (!requiredRoles || requiredRoles.length === 0) {
+    if (!requiredRoles || requiredRoles.length === 0 || isPublic) {
       return true;
     }
 
-    const request = context.switchToHttp().getRequest();
-    const userRole =
-      request.user?.rol ||
-      request.headers['x-role'] ||
-      request.headers['x-user-rol'] ||
-      Role.ADMIN_PASTORAL;
+    const request = context.switchToHttp().getRequest<{ user?: RequestUser }>();
+    if (!request.user) {
+      throw new UnauthorizedException('Debes iniciar sesión para acceder a este recurso');
+    }
 
-    const hasRole = requiredRoles.includes(userRole);
-    if (!hasRole) {
+    if (!requiredRoles.includes(request.user.rol)) {
       throw new ForbiddenException(
-        `Acceso denegado: el rol '${userRole}' no tiene permisos para esta acción (se requiere: ${requiredRoles.join(', ')})`,
+        `Acceso denegado: el rol '${request.user.rol}' no tiene permisos para esta acción (se requiere: ${requiredRoles.join(', ')})`,
       );
     }
 

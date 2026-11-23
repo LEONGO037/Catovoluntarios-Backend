@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
@@ -15,7 +16,9 @@ import { PostulacionesModule } from './modules/postulaciones/postulaciones.modul
 import { ProyectosModule } from './modules/proyectos/proyectos.module';
 import { UbicacionModule } from './modules/ubicacion/ubicacion.module';
 import { EntrevistasModule } from './modules/entrevistas/entrevistas.module';
+import { AsistenciaModule } from './modules/asistencia/asistencia.module';
 import { SimuladosM03Module } from './simulados-m03/simulados-m03.module';
+import { AuthenticationGuard } from './common/guards/authentication.guard';
 
 @Module({
   imports: [
@@ -46,9 +49,10 @@ import { SimuladosM03Module } from './simulados-m03/simulados-m03.module';
     ProyectosModule,
     UbicacionModule,
     EntrevistasModule,
+    AsistenciaModule,
     SimuladosM03Module,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, { provide: APP_GUARD, useClass: AuthenticationGuard }],
 })
 export class AppModule {}
