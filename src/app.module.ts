@@ -8,6 +8,8 @@ import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { MailModule } from './modules/mail/mail.module';
+import { EntrevistasModule } from './modules/entrevistas/entrevistas.module';
+import { SimuladosM03Module } from './simulados-m03/simulados-m03.module';
 
 @Module({
   imports: [
@@ -31,6 +33,8 @@ import { MailModule } from './modules/mail/mail.module';
     AuthModule,
     UsersModule,
     DashboardModule,
+    EntrevistasModule, // M03 — Marvin Mollo
+    SimuladosM03Module, // ⚠ TEMPORAL M03
   ],
   controllers: [AppController],
   providers: [AppService],

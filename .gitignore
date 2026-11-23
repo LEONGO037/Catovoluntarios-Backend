@@ -27,3 +27,6 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+
+# Archivos subidos en desarrollo (M03: informes PDF, temporal hasta Cloudflare R2)
+uploads/
