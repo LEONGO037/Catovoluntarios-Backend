@@ -165,10 +165,10 @@ export class SemaforosService {
         nombreCompleto: asig.usuario
           ? `${asig.usuario.nombres} ${asig.usuario.primerApellido} ${asig.usuario.segundoApellido || ''}`.trim()
           : 'Voluntario',
-        carrera: asig.usuario?.carrera || 'Ingeniería',
+        carrera: asig.usuario?.carrera || 'Sin registrar',
         telefono: asig.usuario?.telefono || '',
-        horarioComprometido: 'Sábados 09:00 - 13:00',
-        horasMesEstimadas: 16,
+        horarioComprometido: asig.horarioComprometido || 'Pendiente',
+        horasMesEstimadas: 0,
         colorSemaforo: reporteMes?.colorSemaforo || 'Verde',
         observacionesDesempeno: reporteMes?.observacionesDesempeno || '',
         notificarAbandono: reporteMes?.notificarAbandono || false,
@@ -276,20 +276,22 @@ export class SemaforosService {
     let lista: VoluntarioBaseMadreItem[] = usuarios.map((user) => {
       const premiosUsuario = todosPremios.filter((p) => p.idUsuario === user.id);
       const asignacionReciente = user.asignaciones?.[0];
-      const proyectoNombre = asignacionReciente?.proyecto?.nombreProyecto || 'Hogar San Ramón';
+      const proyectoNombre = asignacionReciente?.proyecto?.nombreProyecto || 'Sin asignar';
 
-      // Simular cálculo de horas históricas según antigüedad o base
-      let horas = 40;
-      if (user.semestreIngreso === '1/2024' || user.semestreIngreso === '2/2023') {
-        horas = 84;
-      } else if (user.semestreIngreso === '2/2024') {
-        horas = 72;
-      } else if (user.semestreIngreso === '1/2025') {
-        horas = 52;
-      } else if (user.semestreIngreso === '2/2025') {
-        horas = 46;
-      } else {
-        horas = 42;
+      // Cálculo de horas históricas según asignaciones reales
+      let horas = 0;
+      if (user.asignaciones && user.asignaciones.length > 0) {
+        horas = user.asignaciones.reduce(
+          (acc, a) =>
+            acc +
+            (a.asistencias
+              ? a.asistencias.reduce(
+                  (sum, ast) => sum + (Number(ast.horasCalculadas) || 0),
+                  0,
+                )
+              : 0),
+          0,
+        );
       }
 
       // Regla de nivel automatizado (RF-21)
@@ -351,8 +353,8 @@ export class SemaforosService {
       );
     }
 
-    const totalHistoricos = 418; // Dato consolidado histórico Pastoral
-    const horasSocialesCertificadas = 18640;
+    const totalHistoricos = lista.length;
+    const horasSocialesCertificadas = lista.reduce((acc, v) => acc + (v.horasTotalesHistoricas || 0), 0);
     const totalSuperPro = lista.filter((v) => v.nivelCalculado === 'SUPER_PRO').length;
     const activosSemestreActual = lista.filter((v) => v.estado.includes('Activo')).length;
 
@@ -415,12 +417,13 @@ export class SemaforosService {
     const items: VoluntarioRankingItem[] = usuarios.map((user) => {
       const asig = user.asignaciones?.[0];
       const morados =
-        asig?.semaforos?.filter((s) => s.colorSemaforo.toLowerCase() === 'morado').length ||
-        (user.ci === '8392104' ? 3 : user.ci === '9283102' ? 2 : 1);
+        asig?.semaforos?.filter((s) => s.colorSemaforo.toLowerCase() === 'morado').length || 0;
 
-      const horas = user.ci === '8392104' ? 54 : user.ci === '9283102' ? 48 : 42;
-      const evalInst = user.ci === '8392104' ? 5 : user.ci === '9283102' ? 5 : 4.5;
-      const nivel: 'JUNIOR' | 'PRO' | 'SUPER_PRO' = horas >= 50 ? 'SUPER_PRO' : 'PRO';
+      const horas = asig?.asistencias
+        ? asig.asistencias.reduce((sum, ast) => sum + (Number(ast.horasCalculadas) || 0), 0)
+        : 0;
+      const evalInst = asig ? 5 : 0;
+      const nivel: 'JUNIOR' | 'PRO' | 'SUPER_PRO' = horas >= 50 ? 'SUPER_PRO' : (horas >= 40 ? 'PRO' : 'JUNIOR');
       const bonusSuperPro = nivel === 'SUPER_PRO' ? 10 : 0;
 
       const score = parseFloat(
@@ -434,17 +437,17 @@ export class SemaforosService {
         idUsuario: user.id,
         nombreCompleto,
         ci: user.ci,
-        carrera: user.carrera || 'Psicología',
-        proyecto: asig?.proyecto?.nombreProyecto || 'Hogar San Ramón',
+        carrera: user.carrera || 'Carrera no registrada',
+        proyecto: asig?.proyecto?.nombreProyecto || 'Sin asignar',
         horasSemestre: horas,
         semaforosMorados: morados,
         evaluacionInstitucion: evalInst,
         nivel,
         score,
         merito:
-          user.ci === '8392104'
-            ? 'Asistencia perfecta, empatía con adultos mayores y diseño de fichas adaptadas de estimulación cognitiva.'
-            : 'Lideró talleres ocupacionales y dinámicas de grupo con destacada calidez y compromiso pastoral.',
+          score >= 80
+            ? 'Destacada participación, calidez y compromiso pastoral en su proyecto receptor.'
+            : 'Participación en actividades y jornadas de servicio solidario.',
         aprobadoRetiro: score >= 85,
       };
     });
@@ -539,19 +542,18 @@ export class SemaforosService {
       const proyecto = await this.proyectoRepo.findOne({ where: { id: proyectoId } });
       return {
         proyectoId,
-        nombreProyecto: proyecto?.nombreProyecto || 'Hogar de Ancianos San Ramón',
+        nombreProyecto: proyecto?.nombreProyecto || 'Proyecto Receptor',
         semestre,
-        voluntariosRecibidos: 12,
-        voluntariosCulminados: 11,
-        bajasAbandonos: 1,
-        calificacionGrupo: 5,
-        calificacionCatolider: 5,
+        voluntariosRecibidos: 0,
+        voluntariosCulminados: 0,
+        bajasAbandonos: 0,
+        calificacionGrupo: 0,
+        calificacionCatolider: 0,
         solicitaContinuidadConvenio: true,
-        cuposSolicitadosProximoSemestre: 14,
-        bloque4ObservacionesSugerenciasLibres:
-          'Agradecemos sinceramente el apoyo brindado por la Pastoral Universitaria y sus estudiantes este semestre. Los voluntarios mostraron un alto grado de empatía, calidez y puntualidad en cada jornada en el Hogar.',
-        nombreResponsableLlenado: proyecto?.supervisorNombre || 'Lic. Miriam Salinas',
-        cargoResponsable: 'Trabajadora Social y Supervisora de Voluntariado',
+        cuposSolicitadosProximoSemestre: 0,
+        bloque4ObservacionesSugerenciasLibres: '',
+        nombreResponsableLlenado: proyecto?.supervisorNombre || '',
+        cargoResponsable: 'Supervisión de Voluntariado',
         fechaEvaluacion: new Date(),
         esBorrador: true,
       };
@@ -575,11 +577,13 @@ export class SemaforosService {
     }
 
     const asig = usuario.asignaciones?.[0];
-    const proyectoNombre = asig?.proyecto?.nombreProyecto || 'Hogar de Ancianos San Ramón';
+    const proyectoNombre = asig?.proyecto?.nombreProyecto || 'Sin asignar';
     const nombreCompleto = `${usuario.nombres} ${usuario.primerApellido} ${usuario.segundoApellido || ''}`.trim();
     const ci = usuario.ci;
     const carrera = usuario.carrera || 'Carrera Universitaria';
-    const horas = 48; // Horas auditadas del semestre
+    const horas = asig?.asistencias
+      ? asig.asistencias.reduce((sum, ast) => sum + (Number(ast.horasCalculadas) || 0), 0)
+      : 0; // Horas auditadas del semestre
     const fechaEmision = 'Noviembre de 2026';
 
     const textoPreformateadoCopiar = `CERTIFICADO DE CULMINACIÓN DE VOLUNTARIADO SOCIAL
@@ -633,6 +637,9 @@ La Paz, ${fechaEmision}.`;
       const ci = u?.ci || 'N/D';
       const carrera = u?.carrera || 'Carrera UCB';
       const proyectoNombre = asig.proyecto?.nombreProyecto || 'Centro Aliado';
+      const horas = asig.asistencias
+        ? asig.asistencias.reduce((sum, ast) => sum + (Number(ast.horasCalculadas) || 0), 0)
+        : 0;
 
       return {
         idUsuario: u?.id || 0,
@@ -641,8 +648,8 @@ La Paz, ${fechaEmision}.`;
         carrera,
         proyectoReceptor: proyectoNombre,
         semestre,
-        horasCumplidas: 48,
-        textoCertificado: `Por cuanto ${nombreCompleto} (CI: ${ci}), estudiante de ${carrera}, ha cumplido satisfactoriamente 48 horas de voluntariado en "${proyectoNombre}".`,
+        horasCumplidas: horas,
+        textoCertificado: `Por cuanto ${nombreCompleto} (CI: ${ci}), estudiante de ${carrera}, ha cumplido satisfactoriamente ${horas} horas de voluntariado en "${proyectoNombre}".`,
       };
     });
   }

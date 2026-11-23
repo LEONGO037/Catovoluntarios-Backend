@@ -137,7 +137,7 @@ export class DocumentosService {
           ci: u?.ci || 'Sin CI',
           nombreCompleto: u ? `${u.nombres} ${u.primerApellido} ${u.segundoApellido || ''}`.trim() : 'Voluntario',
           carrera: u?.carrera || 'Carrera no registrada',
-          proyectoAsignado: asig?.proyecto?.nombreProyecto || 'Hogar San Ramón',
+          proyectoAsignado: asig?.proyecto?.nombreProyecto || 'Sin asignar',
           polizaValidada: asig?.polizaValidada || false,
           habilitadoCampo: asig?.habilitadoCampo || false,
           documentos: [],
@@ -150,10 +150,17 @@ export class DocumentosService {
 
     return {
       kpis: {
-        pendientesRevision: items.filter((i) => i.documentos.some((d: any) => d.estado === EstadoDocumento.PENDIENTE)).length || 12,
-        observados: items.filter((i) => i.documentos.some((d: any) => d.estado === EstadoDocumento.OBSERVADO)).length || 4,
-        habilitadosEsteSemestre: asignaciones.filter((a) => a.habilitadoCampo).length || 78,
-        polizasProximasVencer: 3,
+        pendientesRevision: items.filter((i) => i.documentos.some((d: any) => d.estado === EstadoDocumento.PENDIENTE)).length,
+        observados: items.filter((i) => i.documentos.some((d: any) => d.estado === EstadoDocumento.OBSERVADO)).length,
+        habilitadosEsteSemestre: asignaciones.filter((a) => a.habilitadoCampo).length,
+        polizasProximasVencer: items.filter((i) =>
+          i.documentos.some(
+            (d: any) =>
+              d.tipoDocumento === TipoDocumento.POLIZA_ACCIDENTES_APC7083 &&
+              d.vigenciaFin &&
+              new Date(d.vigenciaFin).getTime() - Date.now() < 30 * 86400000,
+          ),
+        ).length,
       },
       voluntarios: items,
     };
@@ -235,12 +242,17 @@ export class DocumentosService {
 
     const participantes = await query.getMany();
 
+    const voluntariosHabilitados = participantes.filter((p) => p.asistio && p.recorridoSitio).length;
+    const induccionCompletada = participantes.filter((p) => p.estadoInduccion === EstadoInduccion.COMPLETADA).length;
+    const pendientesInduccion = participantes.filter((p) => p.estadoInduccion === EstadoInduccion.PENDIENTE).length;
+    const reprogramarAsistencia = participantes.filter((p) => p.estadoInduccion === EstadoInduccion.REPROGRAMAR).length;
+
     return {
       kpis: {
-        voluntariosHabilitados: 78,
-        induccionCompletada: 61,
-        pendientesInduccion: 14,
-        reprogramarAsistencia: 3,
+        voluntariosHabilitados,
+        induccionCompletada,
+        pendientesInduccion,
+        reprogramarAsistencia,
       },
       participantes,
     };
