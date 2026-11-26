@@ -20,6 +20,10 @@ export class FilterPostulacionesDto {
   estado?: EstadoPostulacion;
 
   @IsOptional()
+  @IsString()
+  semestre?: string;
+
+  @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)

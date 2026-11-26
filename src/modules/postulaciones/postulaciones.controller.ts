@@ -41,8 +41,8 @@ export class PostulacionesController {
    */
   @Get('kpis')
   @Roles(RolUsuario.ADMIN_PASTORAL, RolUsuario.CATOLIDER)
-  async getKpis() {
-    return await this.postulacionesService.getKpis();
+  async getKpis(@Query('semestre') semestre?: string) {
+    return await this.postulacionesService.getKpis(semestre);
   }
 
   /**
