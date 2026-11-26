@@ -224,8 +224,15 @@ export class UsersService implements OnModuleInit {
     semestreAfectado?: string;
   }> {
     const semestre = typeof param === 'string' ? param : param?.semestreAnterior;
+    const whereCondition = semestre
+      ? [
+          { rol: Role.CATOLIDER, semestreLiderazgo: semestre },
+          { esCatoliderVigente: true, semestreLiderazgo: semestre },
+        ]
+      : [{ rol: Role.CATOLIDER }, { esCatoliderVigente: true }];
+
     const catolideres = await this.usersRepository.find({
-      where: [{ rol: Role.CATOLIDER }, { esCatoliderVigente: true }],
+      where: whereCondition,
     });
 
     for (const catolider of catolideres) {
@@ -264,7 +271,18 @@ export class UsersService implements OnModuleInit {
     return await this.usersRepository.save(user);
   }
 
-  async getCatolideresVigentes(): Promise<UserEntity[]> {
+  async getCatolideresVigentes(semestre?: string): Promise<UserEntity[]> {
+    if (semestre && semestre.trim() !== '') {
+      const s = semestre.trim();
+      return await this.usersRepository.find({
+        where: [
+          { rol: Role.CATOLIDER, semestreLiderazgo: s },
+          { esCatoliderVigente: true, semestreLiderazgo: s },
+        ],
+        order: { primerApellido: 'ASC' },
+      });
+    }
+
     return await this.usersRepository.find({
       where: [{ rol: Role.CATOLIDER }, { esCatoliderVigente: true }],
       order: { primerApellido: 'ASC' },
@@ -277,6 +295,20 @@ export class UsersService implements OnModuleInit {
       order: { primerApellido: 'ASC' },
       take: 20,
     });
+  }
+
+  async unassignCatolider(id: number): Promise<UserEntity> {
+    const user = await this.usersRepository.findOne({ where: { id } });
+    if (!user) {
+      throw new NotFoundException(`Usuario con identificador ${id} no encontrado`);
+    }
+
+    user.rol = Role.VOLUNTARIO;
+    user.esCatoliderVigente = false;
+    user.semestreLiderazgo = null as unknown as string;
+    user.modalidadLiderazgo = null as unknown as string;
+
+    return await this.usersRepository.save(user);
   }
 
   async updatePassword(id: number, plainPassword: string): Promise<void> {

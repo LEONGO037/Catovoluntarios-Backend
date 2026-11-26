@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, Query, ParseIntPipe, UseGuards } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -56,8 +56,8 @@ export class UsersController {
    */
   @Get('catolideres-vigentes')
   @Roles(Role.ADMIN_PASTORAL, Role.CATOLIDER)
-  async getCatolideresVigentes() {
-    return await this.usersService.getCatolideresVigentes();
+  async getCatolideresVigentes(@Query('semestre') semestre?: string) {
+    return await this.usersService.getCatolideresVigentes(semestre);
   }
 
   /**
@@ -67,5 +67,18 @@ export class UsersController {
   @Roles(Role.ADMIN_PASTORAL)
   async getVoluntariosElegibles() {
     return await this.usersService.getVoluntariosElegibles();
+  }
+
+  /**
+   * Revocación individual del rol de Catolíder (vuelve a Voluntario)
+   */
+  @Patch(':id/unassign-catolider')
+  @Roles(Role.ADMIN_PASTORAL)
+  async unassignCatolider(@Param('id', ParseIntPipe) id: number) {
+    const user = await this.usersService.unassignCatolider(id);
+    return {
+      message: `Se retiró el liderazgo a ${user.nombres} ${user.primerApellido}. Ahora figura como Voluntario.`,
+      user,
+    };
   }
 }
