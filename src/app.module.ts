@@ -11,6 +11,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { MailModule } from './modules/mail/mail.module';
 import { StorageModule } from './modules/storage/storage.module';
 import { DocumentosModule } from './modules/documentos/documentos.module';
+import { NotificacionesModule } from './modules/notificaciones/notificaciones.module';
 import { SemaforosModule } from './modules/semaforos/semaforos.module';
 import { PostulacionesModule } from './modules/postulaciones/postulaciones.module';
 import { ProyectosModule } from './modules/proyectos/proyectos.module';
@@ -44,6 +45,7 @@ import { AuthenticationGuard } from './common/guards/authentication.guard';
     UsersModule,
     DashboardModule,
     DocumentosModule,
+    NotificacionesModule,
     SemaforosModule,
     PostulacionesModule,
     ProyectosModule,

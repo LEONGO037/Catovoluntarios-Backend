@@ -1,15 +1,15 @@
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsDateString, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 
 export class CreateSesionInduccionDto {
   @IsString()
   @IsNotEmpty()
+  @MaxLength(150)
   titulo: string;
 
-  @IsString()
-  @IsNotEmpty()
+  @IsDateString({ strict: true })
   fechaHora: string;
 
-  @IsString()
+  @IsIn(['PRESENCIAL', 'VIRTUAL'])
   @IsOptional()
   modalidad?: string;
 
@@ -19,8 +19,11 @@ export class CreateSesionInduccionDto {
 
   @IsString()
   @IsOptional()
+  @MaxLength(150)
   facilitador?: string;
 
   @IsOptional()
+  @IsInt()
+  @Min(1)
   proyectoId?: number;
 }

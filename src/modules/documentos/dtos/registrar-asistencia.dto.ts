@@ -1,27 +1,33 @@
-import { IsBoolean, IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsDateString, IsEnum, IsInt, IsOptional, IsString, Min } from 'class-validator';
 import { EstadoInduccion } from '../entities/asistencia-induccion.entity';
 
 export class RegistrarAsistenciaInduccionDto {
   @IsOptional()
+  @IsInt()
+  @Min(1)
   asistenciaId?: number;
 
   @IsOptional()
+  @IsInt()
+  @Min(1)
   userId?: number;
 
   @IsOptional()
+  @IsInt()
+  @Min(1)
   sesionId?: number;
 
   @IsBoolean()
   @IsOptional()
   asistio?: boolean;
 
-  @IsString()
+  @IsDateString({ strict: true })
   @IsOptional()
-  fechaCharla?: string;
+  fechaCharla?: string | null;
 
-  @IsString()
+  @IsDateString({ strict: true })
   @IsOptional()
-  recorridoSitio?: string;
+  recorridoSitio?: string | null;
 
   @IsEnum(EstadoInduccion)
   @IsOptional()
@@ -29,5 +35,5 @@ export class RegistrarAsistenciaInduccionDto {
 
   @IsString()
   @IsOptional()
-  observaciones?: string;
+  observaciones?: string | null;
 }

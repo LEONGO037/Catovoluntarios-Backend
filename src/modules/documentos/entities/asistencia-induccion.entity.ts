@@ -30,10 +30,10 @@ export class AsistenciaInduccionEntity extends BaseEntity {
   asistio: boolean;
 
   @Column({ type: 'date', name: 'fecha_charla', nullable: true })
-  fechaCharla?: string;
+  fechaCharla: string | null;
 
   @Column({ type: 'varchar', length: 100, name: 'recorrido_sitio', nullable: true })
-  recorridoSitio?: string;
+  recorridoSitio: string | null;
 
   @Column({
     type: 'enum',
@@ -44,5 +44,5 @@ export class AsistenciaInduccionEntity extends BaseEntity {
   estadoInduccion: EstadoInduccion;
 
   @Column({ type: 'text', nullable: true })
-  observaciones?: string;
+  observaciones: string | null;
 }

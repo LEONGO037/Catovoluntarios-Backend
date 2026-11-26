@@ -1,9 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   S3Client,
   PutObjectCommand,
   DeleteObjectCommand,
+  GetObjectCommand,
 } from '@aws-sdk/client-s3';
 import * as path from 'path';
 import * as crypto from 'crypto';
@@ -22,16 +23,19 @@ export class StorageService {
   private readonly logger = new Logger(StorageService.name);
   private readonly s3Client: S3Client | null = null;
   private readonly bucketName: string;
+  private readonly bucketDocumentos: string;
   private readonly publicUrl: string;
   private readonly isR2Enabled: boolean = false;
   private readonly localStorageDir: string;
 
   constructor(private readonly configService: ConfigService) {
     const accountId = this.configService.get<string>('R2_ACCOUNT_ID');
+    const endpoint = this.configService.get<string>('R2_ENDPOINT');
     const accessKeyId = this.configService.get<string>('R2_ACCESS_KEY_ID');
     const secretAccessKey = this.configService.get<string>('R2_SECRET_ACCESS_KEY');
     this.bucketName =
       this.configService.get<string>('R2_BUCKET_NAME') || 'catovoluntarios-documentos';
+    this.bucketDocumentos = this.configService.get<string>('R2_DOCUMENTOS_BUCKET_NAME') || this.bucketName;
     this.publicUrl = (
       this.configService.get<string>('R2_PUBLIC_URL') || ''
     ).replace(/\/$/, '');
@@ -40,7 +44,7 @@ export class StorageService {
     this.localStorageDir = path.join(process.cwd(), 'uploads');
 
     const hasValidCredentials =
-      Boolean(accountId) &&
+      Boolean(endpoint || accountId) &&
       Boolean(accessKeyId) &&
       Boolean(secretAccessKey) &&
       accessKeyId !== 'tu_r2_access_key_id' &&
@@ -51,7 +55,8 @@ export class StorageService {
       try {
         this.s3Client = new S3Client({
           region: 'auto',
-          endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+          endpoint: endpoint || `https://${accountId}.r2.cloudflarestorage.com`,
+          forcePathStyle: Boolean(endpoint),
           credentials: {
             accessKeyId: accessKeyId!,
             secretAccessKey: secretAccessKey!,
@@ -82,9 +87,10 @@ export class StorageService {
   async uploadFile(
     file: Express.Multer.File,
     folder = 'documentos',
+    privado = false,
   ): Promise<UploadResult> {
     const ext = path.extname(file.originalname).toLowerCase();
-    const safeBaseName = path
+    const safeBaseName = privado ? 'documento' : path
       .basename(file.originalname, ext)
       .replace(/[^a-zA-Z0-9_\-]/g, '_')
       .substring(0, 60);
@@ -95,19 +101,19 @@ export class StorageService {
     if (this.isConfigured() && this.s3Client) {
       try {
         const command = new PutObjectCommand({
-          Bucket: this.bucketName,
+          Bucket: privado ? this.bucketDocumentos : this.bucketName,
           Key: key,
           Body: file.buffer,
           ContentType: file.mimetype || 'application/octet-stream',
           Metadata: {
-            originalName: encodeURIComponent(file.originalname),
+            ...(privado ? {} : { originalName: encodeURIComponent(file.originalname) }),
             uploadedAt: new Date().toISOString(),
           },
         });
 
         await this.s3Client.send(command);
 
-        const fileUrl = this.publicUrl
+        const fileUrl = privado ? `r2:${key}` : this.publicUrl
           ? `${this.publicUrl}/${key}`
           : `https://${this.bucketName}.r2.cloudflarestorage.com/${key}`;
 
@@ -128,13 +134,13 @@ export class StorageService {
 
     // Modo respaldo local si no hay credenciales R2 aún
     try {
-      if (!fs.existsSync(this.localStorageDir)) {
-        fs.mkdirSync(this.localStorageDir, { recursive: true });
-      }
-      const localFilePath = path.join(this.localStorageDir, `${uniqueId}-${safeBaseName}${ext}`);
-      fs.writeFileSync(localFilePath, file.buffer);
+      const directorio = privado ? path.join(process.cwd(), 'uploads-private') : this.localStorageDir;
+      await fs.promises.mkdir(directorio, { recursive: true });
+      const nombreLocal = `${uniqueId}-${safeBaseName}${ext}`;
+      const localFilePath = path.join(directorio, nombreLocal);
+      await fs.promises.writeFile(localFilePath, file.buffer);
 
-      const localUrl = `/uploads/${uniqueId}-${safeBaseName}${ext}`;
+      const localUrl = privado ? `privado:${nombreLocal}` : `/uploads/${nombreLocal}`;
       this.logger.log(`📁 Archivo almacenado localmente en respaldo: [${localFilePath}]`);
 
       return {
@@ -150,6 +156,61 @@ export class StorageService {
     }
   }
 
+  async leerDocumento(referencia: string, userId: number): Promise<Buffer> {
+    const archivoLocal = this.rutaLocal(referencia);
+    if (archivoLocal) {
+      try {
+        return await fs.promises.readFile(archivoLocal);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+      }
+    } else if (this.s3Client) {
+      const key = this.claveR2(referencia);
+      if (key?.startsWith(`documentos/usuario_${userId}/`)) {
+        let objeto;
+        try {
+          objeto = await this.s3Client.send(new GetObjectCommand({ Bucket: this.bucketParaReferencia(referencia), Key: key }));
+        } catch (error) {
+          const codigo = (error as { name?: string; $metadata?: { httpStatusCode?: number } });
+          if (codigo.name !== 'NoSuchKey' && codigo.$metadata?.httpStatusCode !== 404) throw error;
+        }
+        if (objeto?.Body) return Buffer.from(await objeto.Body.transformToByteArray());
+      }
+    }
+    throw new NotFoundException('Archivo no disponible en el almacenamiento de documentos.');
+  }
+
+  async eliminarDocumento(referencia: string, userId: number) {
+    const key = this.claveR2(referencia);
+    if (this.rutaLocal(referencia) || key?.startsWith(`documentos/usuario_${userId}/`)) {
+      return this.deleteFile(referencia);
+    }
+    return false;
+  }
+
+  private claveR2(referencia: string): string | undefined {
+    const prefijoAnterior = `https://${this.bucketName}.r2.cloudflarestorage.com/`;
+    if (referencia.startsWith('r2:')) return referencia.slice(3);
+    if (this.publicUrl && referencia.startsWith(`${this.publicUrl}/`)) {
+      return referencia.slice(this.publicUrl.length + 1);
+    }
+    if (referencia.startsWith(prefijoAnterior)) return referencia.slice(prefijoAnterior.length);
+    return undefined;
+  }
+
+  private bucketParaReferencia(referencia: string) {
+    return referencia.startsWith('r2:') ? this.bucketDocumentos : this.bucketName;
+  }
+
+  private rutaLocal(referencia: string): string | undefined {
+    const match = /^(privado:|\/uploads\/|local\/)([a-zA-Z0-9._-]+)$/.exec(referencia);
+    if (!match || match[2] === '.' || match[2] === '..') return undefined;
+    const directorio = match[1] === 'privado:'
+      ? path.join(process.cwd(), 'uploads-private')
+      : this.localStorageDir;
+    return path.join(directorio, match[2]);
+  }
+
   /**
    * Elimina un archivo de Cloudflare R2 (o almacenamiento local)
    */
@@ -157,18 +218,13 @@ export class StorageService {
     if (!fileUrlOrKey) return true;
 
     // Extraer la clave S3 a partir de la URL o key
-    let key = fileUrlOrKey;
-    if (this.publicUrl && fileUrlOrKey.startsWith(this.publicUrl)) {
-      key = fileUrlOrKey.replace(`${this.publicUrl}/`, '');
-    } else if (fileUrlOrKey.includes('.r2.cloudflarestorage.com/')) {
-      const parts = fileUrlOrKey.split('.r2.cloudflarestorage.com/');
-      key = parts[1] || fileUrlOrKey;
-    }
+    const localPath = this.rutaLocal(fileUrlOrKey);
+    const key = this.claveR2(fileUrlOrKey) ?? fileUrlOrKey;
 
-    if (this.isConfigured() && this.s3Client && !key.startsWith('/uploads/') && !key.startsWith('local/')) {
+    if (!localPath && this.s3Client) {
       try {
         const command = new DeleteObjectCommand({
-          Bucket: this.bucketName,
+          Bucket: this.bucketParaReferencia(fileUrlOrKey),
           Key: key,
         });
         await this.s3Client.send(command);
@@ -180,14 +236,9 @@ export class StorageService {
       }
     }
 
-    // Si era local
+    if (!localPath) return false;
     try {
-      const fileName = path.basename(key);
-      const localPath = path.join(this.localStorageDir, fileName);
-      if (fs.existsSync(localPath)) {
-        fs.unlinkSync(localPath);
-        this.logger.log(`🗑️ Archivo local eliminado: [${localPath}]`);
-      }
+      await fs.promises.rm(localPath, { force: true });
       return true;
     } catch (err) {
       this.logger.warn(`No se pudo eliminar archivo local [${key}]:`, err);

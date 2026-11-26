@@ -41,6 +41,7 @@ DROP TYPE IF EXISTS modalidad_liderazgo_enum CASCADE;
 DROP TYPE IF EXISTS tipo_catolider_enum CASCADE;
 DROP TYPE IF EXISTS nivel_voluntario_enum CASCADE;
 DROP TYPE IF EXISTS estado_documento_enum CASCADE;
+DROP TYPE IF EXISTS asistencias_induccion_estado_induccion_enum CASCADE;
 DROP TYPE IF EXISTS tipo_documento_enum CASCADE;
 DROP TYPE IF EXISTS dictamen_psicologico_enum CASCADE;
 DROP TYPE IF EXISTS dictamen_entrevista_enum CASCADE;
@@ -114,6 +115,10 @@ CREATE TYPE estado_documento_enum AS ENUM (
     'APROBADO',
     'OBSERVADO',
     'RECHAZADO'
+);
+
+CREATE TYPE asistencias_induccion_estado_induccion_enum AS ENUM (
+    'COMPLETADA', 'EN_PROCESO', 'PENDIENTE', 'REPROGRAMAR'
 );
 
 CREATE TYPE nivel_voluntario_enum AS ENUM (
@@ -328,20 +333,29 @@ CREATE TABLE evaluaciones_psicologicas (
 CREATE TABLE documentos_voluntario (
     id SERIAL PRIMARY KEY,
     user_id INT NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
-    semestre_id INT NOT NULL REFERENCES semestres(id) ON DELETE CASCADE,
+    semestre_id INT REFERENCES semestres(id) ON DELETE CASCADE,
+    semestre VARCHAR(20) DEFAULT '2/2026' NOT NULL,
     tipo_documento tipo_documento_enum NOT NULL,
-    -- Enlace Cloudflare R2 donde se almacena el archivo físico (PDF, JPG, PNG)
     archivo_url VARCHAR(1000) NOT NULL,
     nombre_archivo_original VARCHAR(255),
-    -- Campos específicos para la póliza de seguro UCB (APC-7083)
     numero_poliza VARCHAR(50),
+    id_poliza VARCHAR(50),
+    numero_certificado VARCHAR(50),
     vigencia_inicio DATE,
     vigencia_fin DATE,
+    asegurado VARCHAR(150),
     estado estado_documento_enum DEFAULT 'PENDIENTE' NOT NULL,
-    observaciones_validacion TEXT,
+    observacion_detalle TEXT,
     validado_por INT REFERENCES usuarios(id) ON DELETE SET NULL,
     fecha_validacion TIMESTAMP WITH TIME ZONE,
-    CONSTRAINT uq_doc_usuario_semestre_tipo UNIQUE (user_id, semestre_id, tipo_documento)
+    enviado_revision_en TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
+    CONSTRAINT uq_doc_usuario_semestre_tipo UNIQUE (user_id, semestre_id, tipo_documento),
+    CONSTRAINT ck_documento_motivo_veredicto CHECK (
+        estado NOT IN ('OBSERVADO', 'RECHAZADO')
+        OR (observacion_detalle IS NOT NULL AND observacion_detalle ~ '[^[:space:]]')
+    )
 );
 
 -- ====================================================================
@@ -349,12 +363,16 @@ CREATE TABLE documentos_voluntario (
 -- ====================================================================
 CREATE TABLE sesiones_induccion (
     id SERIAL PRIMARY KEY,
-    semestre_id INT NOT NULL REFERENCES semestres(id) ON DELETE CASCADE,
-    titulo VARCHAR(150) NOT NULL,                              -- Ej: 'Taller de Inducción General Pastoral 2/2026'
+    semestre_id INT REFERENCES semestres(id) ON DELETE CASCADE,
+    semestre VARCHAR(20) DEFAULT '2/2026' NOT NULL,
+    titulo VARCHAR(150) NOT NULL,
     fecha_hora TIMESTAMP WITH TIME ZONE NOT NULL,
     modalidad VARCHAR(50) DEFAULT 'PRESENCIAL',
-    lugar_enlace TEXT,                                         -- Aula/Auditorio físico o link virtual (Meet/Zoom)
-    facilitador VARCHAR(150)
+    lugar_enlace TEXT,
+    facilitador VARCHAR(150),
+    proyecto_id INT REFERENCES proyectos_receptores(id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL
 );
 
 CREATE TABLE asistencias_induccion (
@@ -363,6 +381,12 @@ CREATE TABLE asistencias_induccion (
     user_id INT NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
     asistio BOOLEAN DEFAULT FALSE NOT NULL,
     fecha_registro TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    fecha_charla DATE,
+    recorrido_sitio VARCHAR(100),
+    estado_induccion asistencias_induccion_estado_induccion_enum DEFAULT 'PENDIENTE' NOT NULL,
+    observaciones TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
     CONSTRAINT uq_induccion_sesion_usuario UNIQUE (sesion_induccion_id, user_id)
 );
 
@@ -515,8 +539,12 @@ CREATE TABLE notificaciones_sistema (
     tipo VARCHAR(50) DEFAULT 'INFO' NOT NULL,                 -- 'INFO', 'ALERTA', 'REASIGNACION', 'DOCUMENTO_OBSERVADO'
     leida BOOLEAN DEFAULT FALSE NOT NULL,
     enlace_destino VARCHAR(255),
-    fecha_creacion TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+    semestre VARCHAR(20),
+    fecha_creacion TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
+CREATE INDEX idx_notificaciones_usuario_gestion
+    ON notificaciones_sistema (user_id, semestre, id);
 
 -- ====================================================================
 -- 22. TRIGGERS AUTOMÁTICOS
@@ -585,3 +613,5 @@ CREATE INDEX idx_semaforo_color ON reportes_semaforo(color_semaforo);
 
 CREATE INDEX idx_documentos_usuario ON documentos_voluntario(user_id);
 CREATE INDEX idx_documentos_estado ON documentos_voluntario(estado);
+CREATE INDEX idx_documentos_usuario_gestion_tipo ON documentos_voluntario(user_id, semestre, tipo_documento);
+CREATE INDEX idx_documentos_gestion_envio ON documentos_voluntario(semestre, enviado_revision_en);

@@ -8,6 +8,7 @@ import { AsistenciaInduccionEntity } from './entities/asistencia-induccion.entit
 import { AsignacionUbicacionEntity } from '../ubicacion/entities/asignacion-ubicacion.entity';
 import { UserEntity } from '../users/entities/user.entity';
 import { StorageModule } from '../storage/storage.module';
+import { NotificacionesModule } from '../notificaciones/notificaciones.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { StorageModule } from '../storage/storage.module';
       UserEntity,
     ]),
     StorageModule,
+    NotificacionesModule,
   ],
   controllers: [DocumentosController],
   providers: [DocumentosService],

@@ -30,3 +30,4 @@ Thumbs.db
 
 # Archivos subidos en desarrollo / local storage uploads
 uploads/
+uploads-private/

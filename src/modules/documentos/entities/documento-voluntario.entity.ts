@@ -1,4 +1,4 @@
-import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { UserEntity } from '../../users/entities/user.entity';
 
@@ -19,6 +19,8 @@ export enum EstadoDocumento {
 }
 
 @Entity('documentos_voluntario')
+@Index('idx_documentos_usuario_gestion_tipo', ['userId', 'semestre', 'tipoDocumento'])
+@Index('idx_documentos_gestion_envio', ['semestre', 'enviadoRevisionEn'])
 export class DocumentoVoluntarioEntity extends BaseEntity {
   @Column({ type: 'int', name: 'user_id' })
   userId: number;
@@ -44,22 +46,22 @@ export class DocumentoVoluntarioEntity extends BaseEntity {
   nombreArchivoOriginal?: string;
 
   @Column({ type: 'varchar', length: 50, name: 'numero_poliza', nullable: true })
-  numeroPoliza?: string;
+  numeroPoliza: string | null;
 
   @Column({ type: 'varchar', length: 50, name: 'id_poliza', nullable: true })
-  idPoliza?: string;
+  idPoliza: string | null;
 
   @Column({ type: 'varchar', length: 50, name: 'numero_certificado', nullable: true })
-  numeroCertificado?: string;
+  numeroCertificado: string | null;
 
   @Column({ type: 'date', name: 'vigencia_inicio', nullable: true })
-  vigenciaInicio?: Date;
+  vigenciaInicio: string | null;
 
   @Column({ type: 'date', name: 'vigencia_fin', nullable: true })
-  vigenciaFin?: Date;
+  vigenciaFin: string | null;
 
   @Column({ type: 'varchar', length: 150, nullable: true })
-  asegurado?: string;
+  asegurado: string | null;
 
   @Column({
     type: 'enum',
@@ -68,12 +70,15 @@ export class DocumentoVoluntarioEntity extends BaseEntity {
   })
   estado: EstadoDocumento;
 
-  @Column({ type: 'text', name: 'observaciones_validacion', nullable: true })
-  observacionesValidacion?: string;
+  @Column({ type: 'text', name: 'observacion_detalle', nullable: true })
+  observacionesValidacion: string | null;
 
   @Column({ type: 'int', name: 'validado_por', nullable: true })
-  validadoPor?: number;
+  validadoPor: number | null;
 
   @Column({ type: 'timestamp with time zone', name: 'fecha_validacion', nullable: true })
-  fechaValidacion?: Date;
+  fechaValidacion: Date | null;
+
+  @Column({ type: 'timestamp with time zone', name: 'enviado_revision_en', nullable: true })
+  enviadoRevisionEn: Date | null;
 }
