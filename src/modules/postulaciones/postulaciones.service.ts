@@ -70,12 +70,22 @@ export class PostulacionesService {
       const userManagerRepo = manager.getRepository(UserEntity);
 
       const anioActual = new Date().getFullYear();
+      const semestreFinal = createDto.semestre?.trim() || '2/2026';
+      const tipoDocumentoFinal =
+        createDto.tipoDocumento === 'PASAPORTE' ? 'PASAPORTE' : 'CI';
+      const expedidoFinal =
+        tipoDocumentoFinal === 'PASAPORTE'
+          ? 'N/A'
+          : createDto.expedido?.trim() || 'LP';
+      const habilidadesOtrasFinal =
+        createDto.habilidadesOtras?.trim() || undefined;
 
-      // Validar si ya existe postulación para este CI en el presente año
+      // Validar si ya existe postulación para este documento en la gestión actual
       const existente = await postulacionManagerRepo
         .createQueryBuilder('p')
-        .where('p.ci = :ci AND p.codigoPostulacion LIKE :prefijo', {
+        .where('p.ci = :ci AND (p.semestre = :semestre OR p.codigoPostulacion LIKE :prefijo)', {
           ci: createDto.ci,
+          semestre: semestreFinal,
           prefijo: `POST-${anioActual}-%`,
         })
         .getOne();
@@ -112,9 +122,11 @@ export class PostulacionesService {
           nombres: createDto.nombres?.trim(),
           primerApellido: createDto.primerApellido?.trim(),
           segundoApellido: createDto.segundoApellido?.trim() || undefined,
+          tipoDocumento: tipoDocumentoFinal,
           ci: ciLimpio,
           telefono: createDto.celular?.trim() || undefined,
           carrera: carreraFinal,
+          semestreIngreso: semestreFinal,
           activo: true,
         });
         usuario.passwordHash = passwordHash;
@@ -130,6 +142,10 @@ export class PostulacionesService {
 
       const postulacion = postulacionManagerRepo.create({
         ...createDto,
+        tipoDocumento: tipoDocumentoFinal,
+        expedido: expedidoFinal,
+        habilidadesOtras: habilidadesOtrasFinal,
+        semestre: semestreFinal,
         edadCalculada: createDto.edad,
         carrera: carreraFinal,
         codigoPostulacion: codigo,
@@ -181,6 +197,10 @@ export class PostulacionesService {
       qb.andWhere('p.estado = :estado', { estado: filterDto.estado });
     }
 
+    if (filterDto.semestre) {
+      qb.andWhere('p.semestre = :semestre', { semestre: filterDto.semestre });
+    }
+
     qb.orderBy('p.createdAt', 'DESC');
     qb.skip(skip).take(limit);
 
@@ -213,33 +233,35 @@ export class PostulacionesService {
     p.poblacionesInteres = parseSafe(p.poblacionesInteres);
     p.habilidadesDestacadas = parseSafe(p.habilidadesDestacadas);
     p.tresPalabrasPersonalidad = parseSafe(p.tresPalabrasPersonalidad);
+    (p as any).edad = p.edadCalculada ?? p.edad;
     return p;
   }
 
   /**
    * Métricas para la cabecera ejecutiva
    */
-  async getKpis(): Promise<{
+  async getKpis(semestre?: string): Promise<{
     total: number;
     aptos: number;
     observadosSobrecarga: number;
     descartados: number;
     pendientes: number;
   }> {
+    const baseWhere = semestre ? { semestre } : {};
     const [total, aptos, observadosSobrecarga, descartados, pendientes] =
       await Promise.all([
-        this.postulacionRepo.count(),
+        this.postulacionRepo.count({ where: baseWhere }),
         this.postulacionRepo.count({
-          where: { estado: EstadoPostulacion.APTO_ENTREVISTA },
+          where: { ...baseWhere, estado: EstadoPostulacion.APTO_ENTREVISTA },
         }),
         this.postulacionRepo.count({
-          where: { estado: EstadoPostulacion.OBSERVADO_SOBRECARGA },
+          where: { ...baseWhere, estado: EstadoPostulacion.OBSERVADO_SOBRECARGA },
         }),
         this.postulacionRepo.count({
-          where: { estado: EstadoPostulacion.DESCARTADO },
+          where: { ...baseWhere, estado: EstadoPostulacion.DESCARTADO },
         }),
         this.postulacionRepo.count({
-          where: { estado: EstadoPostulacion.PENDIENTE },
+          where: { ...baseWhere, estado: EstadoPostulacion.PENDIENTE },
         }),
       ]);
 
