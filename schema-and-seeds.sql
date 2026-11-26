@@ -11,6 +11,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 DROP TABLE IF EXISTS notificaciones_sistema CASCADE;
+DROP TABLE IF EXISTS certificados_fundacion CASCADE;
 DROP TABLE IF EXISTS evaluaciones_proyectos_receptores CASCADE;
 DROP TABLE IF EXISTS premios_historicos CASCADE;
 DROP TABLE IF EXISTS reportes_semaforo CASCADE;
@@ -553,7 +554,26 @@ CREATE INDEX idx_notificaciones_usuario_gestion
     ON notificaciones_sistema (user_id, semestre, id);
 
 -- ====================================================================
--- 22. TRIGGERS AUTOMÁTICOS
+-- 22. TABLA: CERTIFICADOS_FUNDACION (P-21 / Receptor: Subida de certificados PDF por instituciones)
+-- ====================================================================
+CREATE TABLE certificados_fundacion (
+    id SERIAL PRIMARY KEY,
+    id_proyecto INT NOT NULL REFERENCES proyectos_receptores(id) ON DELETE CASCADE,
+    id_usuario INT NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    semestre VARCHAR(20) NOT NULL DEFAULT '2/2026',
+    url_pdf VARCHAR(1000) NOT NULL,
+    nombre_archivo VARCHAR(255) NOT NULL,
+    subido_por INT REFERENCES usuarios(id) ON DELETE SET NULL,
+    observaciones TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT uq_certificado_fundacion_proyecto_usuario_semestre UNIQUE (id_proyecto, id_usuario, semestre)
+);
+CREATE INDEX idx_certificados_fundacion_proyecto_semestre ON certificados_fundacion (id_proyecto, semestre);
+CREATE INDEX idx_certificados_fundacion_usuario ON certificados_fundacion (id_usuario);
+
+-- ====================================================================
+-- 23. TRIGGERS AUTOMÁTICOS
 -- ====================================================================
 
 -- A) Trigger de Seguridad: Habilitación de Campo sujeta a Póliza + Inducción

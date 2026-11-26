@@ -1,3 +1,5 @@
+jest.mock('../storage/storage.service', () => ({ StorageService: class {} }));
+
 import { Test, TestingModule } from '@nestjs/testing';
 import { SemaforosController } from './semaforos.controller';
 import { SemaforosService } from './semaforos.service';
@@ -17,6 +19,11 @@ describe('SemaforosController', () => {
     obtenerFeedbackProyecto: jest.fn(),
     generarPlantillaCertificado: jest.fn(),
     obtenerPlantillasLote: jest.fn(),
+    subirCertificadoFundacion: jest.fn(),
+    obtenerCertificadosFundacionPorProyecto: jest.fn(),
+    obtenerCertificadosFundacionPorUsuario: jest.fn(),
+    listarTodosCertificadosFundacion: jest.fn(),
+    eliminarCertificadoFundacion: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -143,6 +150,42 @@ describe('SemaforosController', () => {
 
       const res = await controller.generarPlantillaCertificado(1, '2/2026');
       expect(res.textoPreformateadoCopiar).toContain('CERTIFICADO');
+    });
+
+    it('subirCertificadoFundacion debe invocar el servicio de certificados de fundación', async () => {
+      const fakeFile = { originalname: 'Fundacion_Cert.pdf' } as any;
+      mockSemaforosService.subirCertificadoFundacion.mockResolvedValue({
+        id: 1,
+        nombreArchivo: 'Fundacion_Cert.pdf',
+      });
+
+      const res = await controller.subirCertificadoFundacion(
+        fakeFile,
+        1,
+        3,
+        '2/2026',
+        'Todo en orden',
+        { sub: 10 },
+      );
+      expect(mockSemaforosService.subirCertificadoFundacion).toHaveBeenCalledWith(
+        fakeFile,
+        1,
+        3,
+        '2/2026',
+        10,
+        'Todo en orden',
+      );
+      expect(res.id).toBe(1);
+    });
+
+    it('obtenerCertificadosFundacionProyecto debe invocar el servicio', async () => {
+      mockSemaforosService.obtenerCertificadosFundacionPorProyecto.mockResolvedValue([
+        { id: 1, nombreArchivo: 'Cert.pdf' },
+      ]);
+
+      const res = await controller.obtenerCertificadosFundacionProyecto(1, '2/2026');
+      expect(mockSemaforosService.obtenerCertificadosFundacionPorProyecto).toHaveBeenCalledWith(1, '2/2026');
+      expect(res).toHaveLength(1);
     });
   });
 });

@@ -10,3 +10,4 @@ export * from '../../modules/documentos/entities/documento-voluntario.entity';
 export * from '../../modules/documentos/entities/sesion-induccion.entity';
 export * from '../../modules/documentos/entities/asistencia-induccion.entity';
 export * from '../../modules/semaforos/entities/evaluacion-proyecto.entity';
+export * from '../../modules/semaforos/entities/certificado-fundacion.entity';

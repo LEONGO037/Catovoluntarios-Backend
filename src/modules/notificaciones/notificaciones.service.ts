@@ -28,6 +28,8 @@ export class NotificacionesService {
   constructor(
     @InjectRepository(NotificacionEntity)
     private readonly notificaciones: Repository<NotificacionEntity>,
+    @InjectRepository(UserEntity)
+    private readonly users: Repository<UserEntity>,
   ) {}
 
   async documentosEnviados(
@@ -96,6 +98,73 @@ export class NotificacionesService {
       }`,
       tipo: `DOCUMENTO_${documento.estado}`,
       enlaceDestino: '/documentos',
+    });
+  }
+
+  async alertaSemaforoRojo(datos: {
+    voluntarioNombre: string;
+    proyectoNombre: string;
+    mes: string;
+    anio: number;
+    observaciones?: string;
+    semestre?: string;
+  }) {
+    const admins = await this.users.find({
+      where: { rol: Role.ADMIN_PASTORAL, activo: true },
+    });
+    if (!admins.length) return;
+
+    const detalle = datos.observaciones ? ` Motivo: "${datos.observaciones}".` : '';
+    const sem = datos.semestre || '2/2026';
+
+    await this.notificaciones.insert(
+      admins.map((admin) => ({
+        userId: admin.id,
+        semestre: sem,
+        titulo: 'Alerta de Desempeño: Semáforo Rojo / Abandono',
+        mensaje: `El Catolíder evaluó a ${datos.voluntarioNombre} con semáforo Rojo o alerta de abandono en el proyecto "${datos.proyectoNombre}" (${datos.mes}/${datos.anio}).${detalle}`,
+        tipo: 'SEMAFORO_ROJO',
+        enlaceDestino: '/semaforos',
+      })),
+    );
+  }
+
+  async certificadoFundacionSubido(datos: {
+    proyectoNombre: string;
+    voluntarioNombre: string;
+    semestre: string;
+  }) {
+    const admins = await this.users.find({
+      where: { rol: Role.ADMIN_PASTORAL, activo: true },
+    });
+    if (!admins.length) return;
+
+    await this.notificaciones.insert(
+      admins.map((admin) => ({
+        userId: admin.id,
+        semestre: datos.semestre,
+        titulo: 'Nuevo Certificado de Fundación Subido',
+        mensaje: `La institución del proyecto "${datos.proyectoNombre}" subió el certificado oficial para ${datos.voluntarioNombre} en la gestión ${datos.semestre}.`,
+        tipo: 'CERTIFICADO_FUNDACION',
+        enlaceDestino: '/certificados',
+      })),
+    );
+  }
+
+  async premioOtorgado(datos: {
+    voluntarioId: number;
+    nombrePremio: string;
+    categoria?: string;
+    semestre: string;
+  }) {
+    const cat = datos.categoria ? ` en la categoría "${datos.categoria}"` : '';
+    await this.notificaciones.insert({
+      userId: datos.voluntarioId,
+      semestre: datos.semestre,
+      titulo: '¡Felicidades por tu distinción en Catovoluntarios!',
+      mensaje: `Has sido galardonado con el reconocimiento "${datos.nombrePremio}"${cat} en la gestión ${datos.semestre}. ¡Gracias por tu compromiso y vocación de servicio!`,
+      tipo: 'PREMIO_OTORGADO',
+      enlaceDestino: '/podio',
     });
   }
 

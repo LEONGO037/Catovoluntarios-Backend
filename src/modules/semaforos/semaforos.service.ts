@@ -4,9 +4,12 @@ import { Repository } from 'typeorm';
 import { ReporteSemaforoEntity } from './entities/reporte-semaforo.entity';
 import { PremioHistoricoEntity } from './entities/premio-historico.entity';
 import { EvaluacionProyectoEntity } from './entities/evaluacion-proyecto.entity';
+import { CertificadoFundacionEntity } from './entities/certificado-fundacion.entity';
 import { UserEntity } from '../users/entities/user.entity';
 import { AsignacionUbicacionEntity } from '../ubicacion/entities/asignacion-ubicacion.entity';
 import { ProyectoReceptorEntity } from '../proyectos/entities/proyecto-receptor.entity';
+import { StorageService } from '../storage/storage.service';
+import { NotificacionesService } from '../notificaciones/notificaciones.service';
 import { CreateReporteSemaforoDto } from './dtos/create-reporte-semaforo.dto';
 import { CreatePremioHistoricoDto } from './dtos/create-premio-historico.dto';
 import { CreateFeedbackProyectoDto } from './dtos/create-feedback-proyecto.dto';
@@ -59,6 +62,9 @@ export class SemaforosService {
     @InjectRepository(EvaluacionProyectoEntity)
     private readonly evaluacionRepo: Repository<EvaluacionProyectoEntity>,
 
+    @InjectRepository(CertificadoFundacionEntity)
+    private readonly certificadoFundacionRepo: Repository<CertificadoFundacionEntity>,
+
     @InjectRepository(UserEntity)
     private readonly userRepo: Repository<UserEntity>,
 
@@ -67,6 +73,9 @@ export class SemaforosService {
 
     @InjectRepository(ProyectoReceptorEntity)
     private readonly proyectoRepo: Repository<ProyectoReceptorEntity>,
+
+    private readonly storageService: StorageService,
+    private readonly notificacionesService: NotificacionesService,
   ) {}
 
   // =========================================================================
@@ -130,7 +139,29 @@ export class SemaforosService {
       });
     }
 
-    return await this.semaforoRepo.save(reporte);
+    const guardado = await this.semaforoRepo.save(reporte);
+
+    // Disparar notificación a Admin Pastoral si es rojo o alerta de abandono
+    if (guardado.colorSemaforo.toLowerCase() === 'rojo' || guardado.notificarAbandono) {
+      const volNombre = asignacion.usuario
+        ? `${asignacion.usuario.nombres} ${asignacion.usuario.primerApellido}`
+        : 'Voluntario';
+      const proyNombre = asignacion.proyecto?.nombreProyecto || 'Proyecto Receptor';
+      try {
+        await this.notificacionesService.alertaSemaforoRojo({
+          voluntarioNombre: volNombre,
+          proyectoNombre: proyNombre,
+          mes: guardado.mes,
+          anio: guardado.anio,
+          observaciones: guardado.observacionesDesempeno,
+          semestre: asignacion.semestre || '2/2026',
+        });
+      } catch (err) {
+        console.error('Error al emitir notificación de semáforo rojo:', err);
+      }
+    }
+
+    return guardado;
   }
 
   async obtenerReportesPorProyecto(
@@ -385,7 +416,20 @@ export class SemaforosService {
       descripcion: dto.descripcion.trim(),
     });
 
-    return await this.premioRepo.save(premio);
+    const guardado = await this.premioRepo.save(premio);
+
+    try {
+      await this.notificacionesService.premioOtorgado({
+        voluntarioId: dto.idUsuario,
+        nombrePremio: guardado.nombrePremio,
+        categoria: guardado.categoria,
+        semestre: guardado.semestre,
+      });
+    } catch (err) {
+      console.error('Error al emitir notificación de premio:', err);
+    }
+
+    return guardado;
   }
 
   async obtenerPremiosPorUsuario(usuarioId: number): Promise<PremioHistoricoEntity[]> {
@@ -600,6 +644,21 @@ Cumpliendo un total auditado de ${horas} HORAS CRONOLÓGICAS DE VOLUNTARIADO SOC
 
 La Paz, ${fechaEmision}.`;
 
+    const premios = await this.premioRepo.find({
+      where: { idUsuario: usuario.id, semestre },
+      order: { id: 'DESC' },
+    });
+    const distincionPremio =
+      premios.length > 0
+        ? `${premios[0].nombrePremio}${premios[0].categoria ? ` (${premios[0].categoria})` : ''}`
+        : 'Voluntariado Social Concluido';
+
+    const certsFundacion = await this.certificadoFundacionRepo.find({
+      where: { idUsuario: usuario.id, semestre },
+      relations: { proyecto: true },
+      order: { id: 'DESC' },
+    });
+
     return {
       usuarioId: usuario.id,
       nombreCompleto,
@@ -609,6 +668,15 @@ La Paz, ${fechaEmision}.`;
       semestre,
       horasCumplidas: horas,
       fechaEmision,
+      distincionPremio,
+      premios,
+      certificadosFundacion: certsFundacion.map((c) => ({
+        id: c.id,
+        nombreArchivo: c.nombreArchivo,
+        urlPdf: c.urlPdf,
+        fechaSubida: c.createdAt,
+        observaciones: c.observaciones,
+      })),
       actividadesRealizadas:
         'Acompañamiento a beneficiarios, dinamización de talleres grupales, soporte en actividades cotidianas del centro.',
       textoPreformateadoCopiar,
@@ -629,6 +697,14 @@ La Paz, ${fechaEmision}.`;
       },
     });
 
+    const todosPremios = await this.premioRepo.find({
+      where: { semestre },
+    });
+
+    const certsFundacion = await this.certificadoFundacionRepo.find({
+      where: { semestre },
+    });
+
     return asignaciones.map((asig) => {
       const u = asig.usuario;
       const nombreCompleto = u
@@ -641,6 +717,9 @@ La Paz, ${fechaEmision}.`;
         ? asig.asistencias.reduce((sum, ast) => sum + (Number(ast.horasCalculadas) || 0), 0)
         : 0;
 
+      const premio = todosPremios.find((p) => p.idUsuario === u?.id);
+      const certFundacion = certsFundacion.find((c) => c.idUsuario === u?.id);
+
       return {
         idUsuario: u?.id || 0,
         nombreCompleto,
@@ -649,8 +728,117 @@ La Paz, ${fechaEmision}.`;
         proyectoReceptor: proyectoNombre,
         semestre,
         horasCumplidas: horas,
+        distincionPremio: premio?.nombrePremio || 'Voluntariado Concluido',
+        certificadoFundacionUrl: certFundacion?.urlPdf || null,
+        certificadoFundacionArchivo: certFundacion?.nombreArchivo || null,
         textoCertificado: `Por cuanto ${nombreCompleto} (CI: ${ci}), estudiante de ${carrera}, ha cumplido satisfactoriamente ${horas} horas de voluntariado en "${proyectoNombre}".`,
       };
     });
+  }
+
+  // =========================================================================
+  // 4. CERTIFICADOS DE FUNDACIÓN (Subidos por Proyecto Receptor)
+  // =========================================================================
+
+  async subirCertificadoFundacion(
+    file: Express.Multer.File,
+    proyectoId: number,
+    usuarioId: number,
+    semestre: string = '2/2026',
+    subidoPor?: number,
+    observaciones?: string,
+  ): Promise<CertificadoFundacionEntity> {
+    if (!file) {
+      throw new BadRequestException('Se requiere el archivo PDF o imagen del certificado de la fundación');
+    }
+
+    const proyecto = await this.proyectoRepo.findOne({ where: { id: proyectoId } });
+    if (!proyecto) {
+      throw new NotFoundException(`Proyecto receptor con ID ${proyectoId} no encontrado`);
+    }
+
+    const usuario = await this.userRepo.findOne({ where: { id: usuarioId } });
+    if (!usuario) {
+      throw new NotFoundException(`Voluntario con ID ${usuarioId} no encontrado`);
+    }
+
+    // Subir a Storage (Cloudflare R2 o uploads local)
+    const uploadResult = await this.storageService.uploadFile(file, 'certificados-fundacion');
+
+    let cert = await this.certificadoFundacionRepo.findOne({
+      where: { idProyecto: proyectoId, idUsuario: usuarioId, semestre },
+    });
+
+    if (cert) {
+      cert.urlPdf = uploadResult.url;
+      cert.nombreArchivo = file.originalname;
+      if (subidoPor) cert.subidoPor = subidoPor;
+      if (observaciones) cert.observaciones = observaciones;
+    } else {
+      cert = this.certificadoFundacionRepo.create({
+        idProyecto: proyectoId,
+        idUsuario: usuarioId,
+        semestre,
+        urlPdf: uploadResult.url,
+        nombreArchivo: file.originalname,
+        subidoPor,
+        observaciones,
+      });
+    }
+
+    const guardado = await this.certificadoFundacionRepo.save(cert);
+
+    // Disparar notificación a Admin Pastoral
+    try {
+      await this.notificacionesService.certificadoFundacionSubido({
+        proyectoNombre: proyecto.nombreProyecto,
+        voluntarioNombre: `${usuario.nombres} ${usuario.primerApellido}`,
+        semestre,
+      });
+    } catch (err) {
+      console.error('Error al emitir notificación de certificado de fundación:', err);
+    }
+
+    return guardado;
+  }
+
+  async obtenerCertificadosFundacionPorProyecto(proyectoId: number, semestre?: string) {
+    const where: any = { idProyecto: proyectoId };
+    if (semestre) where.semestre = semestre;
+    return await this.certificadoFundacionRepo.find({
+      where,
+      relations: { usuario: true, usuarioSubidor: true },
+      order: { id: 'DESC' },
+    });
+  }
+
+  async obtenerCertificadosFundacionPorUsuario(usuarioId: number, semestre?: string) {
+    const where: any = { idUsuario: usuarioId };
+    if (semestre) where.semestre = semestre;
+    return await this.certificadoFundacionRepo.find({
+      where,
+      relations: { proyecto: true, usuarioSubidor: true },
+      order: { id: 'DESC' },
+    });
+  }
+
+  async listarTodosCertificadosFundacion(semestre?: string, proyectoId?: number) {
+    const where: any = {};
+    if (semestre) where.semestre = semestre;
+    if (proyectoId) where.idProyecto = proyectoId;
+    return await this.certificadoFundacionRepo.find({
+      where,
+      relations: { usuario: true, proyecto: true, usuarioSubidor: true },
+      order: { id: 'DESC' },
+    });
+  }
+
+  async eliminarCertificadoFundacion(id: number, subidoPor?: number) {
+    const cert = await this.certificadoFundacionRepo.findOne({ where: { id } });
+    if (!cert) {
+      throw new NotFoundException(`Certificado con ID ${id} no encontrado`);
+    }
+    await this.certificadoFundacionRepo.delete(id);
+    return { success: true, message: 'Certificado de fundación eliminado correctamente' };
   }
 }

@@ -11,6 +11,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 DROP TABLE IF EXISTS notificaciones_sistema CASCADE;
+DROP TABLE IF EXISTS certificados_fundacion CASCADE;
 DROP TABLE IF EXISTS evaluaciones_proyectos_receptores CASCADE;
 DROP TABLE IF EXISTS premios_historicos CASCADE;
 DROP TABLE IF EXISTS reportes_semaforo CASCADE;
@@ -198,7 +199,13 @@ CREATE TABLE usuarios (
     telefono VARCHAR(20),
     carrera VARCHAR(150),
     semestre_ingreso VARCHAR(20) DEFAULT '2/2026',
-    activo BOOLEAN DEFAULT TRUE NOT NULL
+    activo BOOLEAN DEFAULT TRUE NOT NULL,
+    es_catolider_vigente BOOLEAN DEFAULT FALSE NOT NULL,
+    semestre_liderazgo VARCHAR(20),
+    modalidad_liderazgo VARCHAR(100),
+    proyecto_receptor_asignado_id INT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 -- ====================================================================
@@ -547,7 +554,26 @@ CREATE INDEX idx_notificaciones_usuario_gestion
     ON notificaciones_sistema (user_id, semestre, id);
 
 -- ====================================================================
--- 22. TRIGGERS AUTOMÁTICOS
+-- 22. TABLA: CERTIFICADOS_FUNDACION (P-21 / Receptor: Subida de certificados PDF por instituciones)
+-- ====================================================================
+CREATE TABLE certificados_fundacion (
+    id SERIAL PRIMARY KEY,
+    id_proyecto INT NOT NULL REFERENCES proyectos_receptores(id) ON DELETE CASCADE,
+    id_usuario INT NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    semestre VARCHAR(20) NOT NULL DEFAULT '2/2026',
+    url_pdf VARCHAR(1000) NOT NULL,
+    nombre_archivo VARCHAR(255) NOT NULL,
+    subido_por INT REFERENCES usuarios(id) ON DELETE SET NULL,
+    observaciones TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT uq_certificado_fundacion_proyecto_usuario_semestre UNIQUE (id_proyecto, id_usuario, semestre)
+);
+CREATE INDEX idx_certificados_fundacion_proyecto_semestre ON certificados_fundacion (id_proyecto, semestre);
+CREATE INDEX idx_certificados_fundacion_usuario ON certificados_fundacion (id_usuario);
+
+-- ====================================================================
+-- 23. TRIGGERS AUTOMÁTICOS
 -- ====================================================================
 
 -- A) Trigger de Seguridad: Habilitación de Campo sujeta a Póliza + Inducción
@@ -615,3 +641,50 @@ CREATE INDEX idx_documentos_usuario ON documentos_voluntario(user_id);
 CREATE INDEX idx_documentos_estado ON documentos_voluntario(estado);
 CREATE INDEX idx_documentos_usuario_gestion_tipo ON documentos_voluntario(user_id, semestre, tipo_documento);
 CREATE INDEX idx_documentos_gestion_envio ON documentos_voluntario(semestre, enviado_revision_en);
+
+-- ====================================================================
+-- 24. DATOS SEMILLA INICIALES
+-- ====================================================================
+-- Semestre activo
+INSERT INTO semestres (nombre, fecha_inicio, fecha_fin, activo)
+VALUES ('Gestión Semestre 2/2026', '2026-08-01', '2026-12-15', TRUE)
+ON CONFLICT DO NOTHING;
+
+-- Usuario Administrador Pastoral: Leonardo Delgado (Password: Password123!)
+INSERT INTO usuarios (
+    ci,
+    ci_complemento,
+    ci_expedido,
+    email,
+    password_hash,
+    nombres,
+    primer_apellido,
+    segundo_apellido,
+    rol,
+    telefono,
+    carrera,
+    semestre_ingreso,
+    activo
+) VALUES (
+    '4892301LP',
+    NULL,
+    'LP',
+    'leonardo.delgado.medrano@gmail.com',
+    '$2b$10$JyiGI04psZwWVKCfvwsH6OsACcbWafNYWLPK1fLjxDUtg0dpOwaz.',
+    'Leonardo',
+    'Delgado',
+    'Medrano',
+    'ADMIN_PASTORAL',
+    '71523489',
+    'Pastoral Universitaria',
+    '2/2026',
+    TRUE
+)
+ON CONFLICT (email) DO UPDATE 
+SET rol = 'ADMIN_PASTORAL',
+    password_hash = '$2b$10$JyiGI04psZwWVKCfvwsH6OsACcbWafNYWLPK1fLjxDUtg0dpOwaz.',
+    nombres = 'Leonardo',
+    primer_apellido = 'Delgado',
+    segundo_apellido = 'Medrano',
+    activo = TRUE;
+

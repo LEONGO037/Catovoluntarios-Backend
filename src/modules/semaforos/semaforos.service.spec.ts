@@ -1,3 +1,5 @@
+jest.mock('../storage/storage.service', () => ({ StorageService: class {} }));
+
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
@@ -5,11 +7,12 @@ import { SemaforosService } from './semaforos.service';
 import { ReporteSemaforoEntity } from './entities/reporte-semaforo.entity';
 import { PremioHistoricoEntity } from './entities/premio-historico.entity';
 import { EvaluacionProyectoEntity } from './entities/evaluacion-proyecto.entity';
+import { CertificadoFundacionEntity } from './entities/certificado-fundacion.entity';
 import { UserEntity } from '../users/entities/user.entity';
 import { AsignacionUbicacionEntity } from '../ubicacion/entities/asignacion-ubicacion.entity';
 import { ProyectoReceptorEntity } from '../proyectos/entities/proyecto-receptor.entity';
-
-// Helper de token para compatibilidad Jest CommonJS sin ESM
+import { StorageService } from '../storage/storage.service';
+import { NotificacionesService } from '../notificaciones/notificaciones.service';
 
 describe('SemaforosService', () => {
   let service: SemaforosService;
@@ -34,6 +37,14 @@ describe('SemaforosService', () => {
     find: jest.fn(),
   };
 
+  const mockCertificadoFundacionRepo = {
+    findOne: jest.fn(),
+    create: jest.fn(),
+    save: jest.fn(),
+    find: jest.fn(),
+    delete: jest.fn(),
+  };
+
   const mockUserRepo = {
     find: jest.fn(),
     findOne: jest.fn(),
@@ -46,6 +57,20 @@ describe('SemaforosService', () => {
 
   const mockProyectoRepo = {
     findOne: jest.fn(),
+  };
+
+  const mockStorageService = {
+    uploadFile: jest.fn().mockResolvedValue({
+      url: 'https://r2.catovoluntarios.org/certificados-fundacion/test.pdf',
+      key: 'certificados-fundacion/test.pdf',
+      nombreArchivo: 'test.pdf',
+    }),
+  };
+
+  const mockNotificacionesService = {
+    alertaSemaforoRojo: jest.fn().mockResolvedValue(undefined),
+    certificadoFundacionSubido: jest.fn().mockResolvedValue(undefined),
+    premioOtorgado: jest.fn().mockResolvedValue(undefined),
   };
 
   beforeEach(async () => {
@@ -65,6 +90,10 @@ describe('SemaforosService', () => {
           useValue: mockEvaluacionRepo,
         },
         {
+          provide: getRepositoryToken(CertificadoFundacionEntity),
+          useValue: mockCertificadoFundacionRepo,
+        },
+        {
           provide: getRepositoryToken(UserEntity),
           useValue: mockUserRepo,
         },
@@ -75,6 +104,14 @@ describe('SemaforosService', () => {
         {
           provide: getRepositoryToken(ProyectoReceptorEntity),
           useValue: mockProyectoRepo,
+        },
+        {
+          provide: StorageService,
+          useValue: mockStorageService,
+        },
+        {
+          provide: NotificacionesService,
+          useValue: mockNotificacionesService,
         },
       ],
     }).compile();
@@ -165,12 +202,57 @@ describe('SemaforosService', () => {
           },
         ],
       });
+      mockPremioRepo.find.mockResolvedValue([]);
+      mockCertificadoFundacionRepo.find.mockResolvedValue([]);
 
       const plantilla = await service.generarPlantillaCertificado(1, '2/2026');
       expect(plantilla.nombreCompleto).toBe('Rodrigo Quispe Mendoza');
       expect(plantilla.ci).toBe('8392104 LP');
       expect(plantilla.textoPreformateadoCopiar).toContain('CERTIFICADO DE CULMINACIÓN');
       expect(plantilla.textoPreformateadoCopiar).toContain('Rodrigo Quispe Mendoza');
+    });
+  });
+
+  describe('certificadosFundacion', () => {
+    it('debe subir certificado de fundación y emitir notificación', async () => {
+      mockProyectoRepo.findOne.mockResolvedValue({ id: 1, nombreProyecto: 'Hogar San Ramón' });
+      mockUserRepo.findOne.mockResolvedValue({
+        id: 3,
+        nombres: 'Mateo',
+        primerApellido: 'Flores',
+      });
+      mockCertificadoFundacionRepo.findOne.mockResolvedValue(null);
+      mockCertificadoFundacionRepo.create.mockImplementation((data) => ({ id: 10, ...data }));
+      mockCertificadoFundacionRepo.save.mockImplementation((data) => Promise.resolve(data));
+
+      const fakeFile = {
+        originalname: 'Certificado_Hogar_San_Ramon.pdf',
+        buffer: Buffer.from('PDF content'),
+        mimetype: 'application/pdf',
+      } as any;
+
+      const resultado = await service.subirCertificadoFundacion(
+        fakeFile,
+        1,
+        3,
+        '2/2026',
+        5,
+        'Cumplimiento excelente',
+      );
+
+      expect(resultado).toBeDefined();
+      expect(mockStorageService.uploadFile).toHaveBeenCalledWith(fakeFile, 'certificados-fundacion');
+      expect(mockNotificacionesService.certificadoFundacionSubido).toHaveBeenCalled();
+    });
+
+    it('debe listar certificados de fundación por proyecto', async () => {
+      mockCertificadoFundacionRepo.find.mockResolvedValue([
+        { id: 1, idProyecto: 1, nombreArchivo: 'Cert.pdf' },
+      ]);
+
+      const lista = await service.obtenerCertificadosFundacionPorProyecto(1, '2/2026');
+      expect(lista).toHaveLength(1);
+      expect(lista[0].nombreArchivo).toBe('Cert.pdf');
     });
   });
 });
