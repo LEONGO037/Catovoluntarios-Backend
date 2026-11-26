@@ -49,7 +49,11 @@ export class PostulacionEntity extends BaseEntity {
   segundoApellido?: string;
 
   @Index()
-  @Column({ type: 'varchar', length: 20, nullable: true })
+  @Column({ type: 'varchar', length: 20, default: 'CI', name: 'tipo_documento' })
+  tipoDocumento: string;
+
+  @Index()
+  @Column({ type: 'varchar', length: 30, nullable: true })
   ci?: string;
 
   @Column({ type: 'varchar', length: 10, nullable: true })
@@ -113,6 +117,9 @@ export class PostulacionEntity extends BaseEntity {
 
   @Column({ type: 'jsonb', default: () => "'[]'", name: 'habilidades_destacadas', nullable: true })
   habilidadesDestacadas?: string[];
+
+  @Column({ type: 'text', nullable: true, name: 'habilidades_otras' })
+  habilidadesOtras?: string;
 
   @Column({ type: 'boolean', default: false, name: 'conocimiento_computacion' })
   conocimientoComputacion: boolean;

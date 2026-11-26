@@ -187,7 +187,8 @@ CREATE TABLE semestres (
 -- ====================================================================
 CREATE TABLE usuarios (
     id SERIAL PRIMARY KEY,
-    ci VARCHAR(20) UNIQUE NOT NULL,
+    tipo_documento VARCHAR(20) DEFAULT 'CI' NOT NULL,
+    ci VARCHAR(30) UNIQUE NOT NULL,
     ci_complemento VARCHAR(10),
     ci_expedido VARCHAR(10) DEFAULT 'LP',
     email VARCHAR(150) UNIQUE NOT NULL,
@@ -219,6 +220,7 @@ CREATE TABLE perfiles_voluntario (
     zona_residencia VARCHAR(100),
     alergias_condiciones_medicas TEXT,
     habilidades_destacadas TEXT,
+    habilidades_otras TEXT,
     tres_palabras_personalidad VARCHAR(255),
     experiencia_previa BOOLEAN DEFAULT FALSE NOT NULL,
     detalle_experiencia TEXT,
@@ -259,6 +261,8 @@ CREATE TABLE postulaciones (
     codigo_postulacion VARCHAR(50) UNIQUE NOT NULL,           -- Ej: 'POST-2026-0842'
     user_id INT NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
     semestre_id INT NOT NULL REFERENCES semestres(id) ON DELETE RESTRICT,
+    semestre VARCHAR(20) DEFAULT '2/2026' NOT NULL,
+    tipo_documento VARCHAR(20) DEFAULT 'CI' NOT NULL,
     tipo_relacion_ucb tipo_relacion_ucb_enum DEFAULT 'Estudiante Regular' NOT NULL,
     carrera VARCHAR(150) NOT NULL,
     zona_residencia VARCHAR(100) NOT NULL,
@@ -275,6 +279,7 @@ CREATE TABLE postulaciones (
     experiencia_previa BOOLEAN DEFAULT FALSE NOT NULL,
     detalle_experiencia TEXT,
     habilidades TEXT,
+    habilidades_otras TEXT,
     tres_palabras_personalidad VARCHAR(255),
     alergias_condiciones_medicas TEXT,
     poblaciones_interes TEXT NOT NULL,

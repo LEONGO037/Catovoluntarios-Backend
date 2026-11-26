@@ -9,8 +9,11 @@ export type RolUsuario = Role;
 
 @Entity('usuarios')
 export class UserEntity extends BaseEntity {
+  @Column({ type: 'varchar', length: 20, default: 'CI', name: 'tipo_documento' })
+  tipoDocumento: string;
+
   @Index({ unique: true })
-  @Column({ type: 'varchar', length: 20, unique: true })
+  @Column({ type: 'varchar', length: 30, unique: true })
   ci: string;
 
   @Index({ unique: true })
