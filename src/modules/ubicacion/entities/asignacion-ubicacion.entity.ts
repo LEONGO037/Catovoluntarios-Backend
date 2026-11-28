@@ -46,7 +46,10 @@ export class AsignacionUbicacionEntity {
     this.idUsuario = val;
   }
 
-  @ManyToOne(() => UserEntity, (user) => user.asignaciones, { onDelete: 'CASCADE', nullable: true })
+  @ManyToOne(() => UserEntity, (user) => user.asignaciones, {
+    onDelete: 'CASCADE',
+    nullable: true,
+  })
   @JoinColumn({ name: 'id_usuario' })
   usuario?: UserEntity;
 
@@ -60,9 +63,13 @@ export class AsignacionUbicacionEntity {
     this.idProyecto = val;
   }
 
-  @ManyToOne(() => ProyectoReceptorEntity, (proyecto) => proyecto.asignaciones, {
-    onDelete: 'CASCADE',
-  })
+  @ManyToOne(
+    () => ProyectoReceptorEntity,
+    (proyecto) => proyecto.asignaciones,
+    {
+      onDelete: 'CASCADE',
+    },
+  )
   @JoinColumn({ name: 'id_proyecto' })
   proyecto: ProyectoReceptorEntity;
 
@@ -77,7 +84,12 @@ export class AsignacionUbicacionEntity {
   })
   condicion: CondicionVoluntario;
 
-  @Column({ type: 'varchar', length: 150, name: 'horario_comprometido', default: 'Tarde (14:00 - 18:00)' })
+  @Column({
+    type: 'varchar',
+    length: 150,
+    name: 'horario_comprometido',
+    default: 'Tarde (14:00 - 18:00)',
+  })
   horario_comprometido: string;
 
   get horarioComprometido(): string {
@@ -127,7 +139,10 @@ export class AsignacionUbicacionEntity {
   @Column({ type: 'boolean', default: true })
   activo: boolean;
 
-  @OneToMany(() => RegistroAsistenciaEntity, (asistencia) => asistencia.asignacion)
+  @OneToMany(
+    () => RegistroAsistenciaEntity,
+    (asistencia) => asistencia.asignacion,
+  )
   asistencias: RegistroAsistenciaEntity[];
 
   @OneToMany(() => ReporteSemaforoEntity, (semaforo) => semaforo.asignacion)

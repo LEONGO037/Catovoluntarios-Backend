@@ -37,6 +37,20 @@ export class NotificacionMovimientoEntity {
   @Column({ type: 'int', nullable: true })
   id_proyecto: number | null;
 
+  @Column({ type: 'varchar', length: 20, name: 'semestre', default: '2/2026' })
+  semestre: string;
+
+  @Column({
+    type: 'varchar',
+    length: 100,
+    name: 'motivo_traslado',
+    nullable: true,
+  })
+  motivo_traslado: string | null;
+
+  @Column({ type: 'text', name: 'motivo_otro_detalle', nullable: true })
+  motivo_otro_detalle: string | null;
+
   @Column({ type: 'varchar', length: 200 })
   titulo: string;
 
@@ -46,7 +60,10 @@ export class NotificacionMovimientoEntity {
   @Column({ type: 'boolean', default: false })
   leido: boolean;
 
-  @Column({ type: 'timestamp with time zone', default: () => 'CURRENT_TIMESTAMP' })
+  @Column({
+    type: 'timestamp with time zone',
+    default: () => 'CURRENT_TIMESTAMP',
+  })
   fecha_envio: Date;
 
   @CreateDateColumn({ type: 'timestamp with time zone', name: 'created_at' })

@@ -15,4 +15,12 @@ export class NotificacionQueryDto {
   @Transform(({ value }) => value === 'true' || value === true)
   @IsBoolean()
   leido?: boolean;
+
+  @IsOptional()
+  @IsString()
+  semestre?: string;
+
+  @IsOptional()
+  @IsString()
+  gestion?: string;
 }

@@ -14,6 +14,20 @@ import { IsFixedFareConstraint } from './create-proyecto-receptor.dto';
 
 export class UpdateProyectoReceptorDto {
   @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  id_institucion?: number;
+
+  @IsOptional()
+  @IsString()
+  semestre?: string;
+
+  @IsOptional()
+  @IsString()
+  gestion?: string;
+
+  @IsOptional()
   @IsString()
   nombre_proyecto?: string;
 

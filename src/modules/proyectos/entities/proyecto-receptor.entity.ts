@@ -5,8 +5,11 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToMany,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
 import { AsignacionUbicacionEntity } from '../../ubicacion/entities/asignacion-ubicacion.entity';
+import { InstitucionEntity } from './institucion.entity';
 
 @Entity('proyectos_receptores')
 export class ProyectoReceptorEntity {
@@ -20,6 +23,26 @@ export class ProyectoReceptorEntity {
     this.id = val;
   }
 
+  @Column({ type: 'int', name: 'id_institucion', nullable: true })
+  id_institucion: number | null;
+
+  @ManyToOne(() => InstitucionEntity, (institucion) => institucion.proyectos, {
+    onDelete: 'RESTRICT',
+    nullable: true,
+  })
+  @JoinColumn({ name: 'id_institucion' })
+  institucion?: InstitucionEntity | null;
+
+  @Column({ type: 'varchar', length: 20, name: 'semestre', default: '2/2026' })
+  semestre: string;
+
+  get gestion(): string {
+    return this.semestre;
+  }
+  set gestion(val: string) {
+    this.semestre = val;
+  }
+
   @Column({ type: 'varchar', length: 200, name: 'nombre_proyecto' })
   nombre_proyecto: string;
 
@@ -30,7 +53,12 @@ export class ProyectoReceptorEntity {
     this.nombre_proyecto = val;
   }
 
-  @Column({ type: 'varchar', length: 255, name: 'direccion_exacta', default: '' })
+  @Column({
+    type: 'varchar',
+    length: 255,
+    name: 'direccion_exacta',
+    default: '',
+  })
   direccion_exacta: string;
 
   get direccionExacta(): string {
@@ -47,7 +75,12 @@ export class ProyectoReceptorEntity {
     this.direccion_exacta = val;
   }
 
-  @Column({ type: 'varchar', length: 100, name: 'macrodistrito_zona', default: 'Centro' })
+  @Column({
+    type: 'varchar',
+    length: 100,
+    name: 'macrodistrito_zona',
+    default: 'Centro',
+  })
   macrodistrito_zona: string;
 
   get macrodistritoZona(): string {
@@ -67,7 +100,12 @@ export class ProyectoReceptorEntity {
   @Column({ type: 'int', nullable: true, name: 'usuario_supervisor_id' })
   usuarioSupervisorId?: number | null;
 
-  @Column({ type: 'varchar', length: 150, name: 'supervisor_nombre', default: 'Supervisor Asignado' })
+  @Column({
+    type: 'varchar',
+    length: 150,
+    name: 'supervisor_nombre',
+    default: 'Supervisor Asignado',
+  })
   supervisor_nombre: string;
 
   get supervisorNombre(): string {
@@ -98,7 +136,12 @@ export class ProyectoReceptorEntity {
     this.supervisor_nombre = val;
   }
 
-  @Column({ type: 'varchar', length: 30, name: 'supervisor_telefono', default: '70000000' })
+  @Column({
+    type: 'varchar',
+    length: 30,
+    name: 'supervisor_telefono',
+    default: '70000000',
+  })
   supervisor_telefono: string;
 
   get supervisorTelefono(): string {
@@ -129,7 +172,13 @@ export class ProyectoReceptorEntity {
     this.supervisor_telefono = val;
   }
 
-  @Column({ type: 'varchar', length: 150, name: 'correo', nullable: true, default: 'centro@pastoral.ucb.edu.bo' })
+  @Column({
+    type: 'varchar',
+    length: 150,
+    name: 'correo',
+    nullable: true,
+    default: 'centro@pastoral.ucb.edu.bo',
+  })
   correo?: string;
 
   get contactoEmail(): string | undefined {
@@ -157,7 +206,9 @@ export class ProyectoReceptorEntity {
   }
 
   get vigenciaConvenioInicio(): Date | undefined {
-    return this.fecha_inicio_convenio ? new Date(this.fecha_inicio_convenio) : undefined;
+    return this.fecha_inicio_convenio
+      ? new Date(this.fecha_inicio_convenio)
+      : undefined;
   }
 
   @Column({ type: 'date', name: 'fecha_fin_convenio', nullable: true })
@@ -171,7 +222,9 @@ export class ProyectoReceptorEntity {
   }
 
   get vigenciaConvenioFin(): Date | undefined {
-    return this.fecha_fin_convenio ? new Date(this.fecha_fin_convenio) : undefined;
+    return this.fecha_fin_convenio
+      ? new Date(this.fecha_fin_convenio)
+      : undefined;
   }
 
   @Column({ type: 'text', name: 'poblacion_objetivo', default: 'General' })
@@ -184,7 +237,11 @@ export class ProyectoReceptorEntity {
     this.poblacion_objetivo = val;
   }
 
-  @Column({ type: 'text', name: 'actividades_semestre_actual', default: 'Apoyo y acompañamiento' })
+  @Column({
+    type: 'text',
+    name: 'actividades_semestre_actual',
+    default: 'Apoyo y acompañamiento',
+  })
   actividades_semestre_actual: string;
 
   get actividadesSemestreActual(): string {
@@ -194,7 +251,13 @@ export class ProyectoReceptorEntity {
     this.actividades_semestre_actual = val;
   }
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, name: 'monto_pasaje_por_dia', default: 10.00 })
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    name: 'monto_pasaje_por_dia',
+    default: 10.0,
+  })
   monto_pasaje_por_dia: number;
 
   get montoPasajePorDia(): number {
@@ -262,7 +325,10 @@ export class ProyectoReceptorEntity {
   @Column({ type: 'boolean', default: true })
   activo: boolean;
 
-  @OneToMany(() => AsignacionUbicacionEntity, (asignacion) => asignacion.proyecto)
+  @OneToMany(
+    () => AsignacionUbicacionEntity,
+    (asignacion) => asignacion.proyecto,
+  )
   asignaciones: AsignacionUbicacionEntity[];
 
   @CreateDateColumn({ type: 'timestamp with time zone', name: 'created_at' })

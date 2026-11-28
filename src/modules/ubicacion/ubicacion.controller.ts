@@ -16,9 +16,12 @@ import { ReasignarUbicacionDto } from './dto/reasignar-ubicacion.dto';
 import { FilterPostulantesAdmitidosDto } from './dto/filter-postulantes-admitidos.dto';
 import { NotificacionQueryDto } from './dto/notificacion-query.dto';
 import { UpdateEstadoDocumentalDto } from './dto/update-estado-documental.dto';
+import { FilterHistorialReasignacionesDto } from './dto/filter-historial-reasignaciones.dto';
+import { FilterGestionDto } from './dto/filter-gestion.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { Role } from '../../common/enums/role.enum';
 import { GetUser } from '../../common/decorators/get-user.decorator';
 import type { RequestUser } from '../../common/decorators/get-user.decorator';
 
@@ -28,39 +31,51 @@ export class UbicacionController {
   constructor(private readonly ubicacionService: UbicacionService) {}
 
   @Get('postulantes-admitidos')
-  @Roles('ADMIN_PASTORAL', 'CATOLIDER')
+  @Roles(Role.ADMIN_PASTORAL, Role.CATOLIDER)
   getPostulantesAdmitidos(@Query() filter: FilterPostulantesAdmitidosDto) {
     return this.ubicacionService.getPostulantesAdmitidosSinUbicar(filter);
   }
 
   @Get('proyectos/:idProyecto/voluntarios')
-  @Roles('ADMIN_PASTORAL', 'CATOLIDER')
+  @Roles(Role.ADMIN_PASTORAL, Role.CATOLIDER, Role.ENCARGADO_RECEPTOR)
   getVoluntariosPorProyecto(
     @Param('idProyecto', ParseIntPipe) idProyecto: number,
+    @Query() filter: FilterGestionDto,
   ) {
-    return this.ubicacionService.getVoluntariosPorProyecto(idProyecto);
+    return this.ubicacionService.getVoluntariosPorProyecto(
+      idProyecto,
+      filter.semestre,
+      filter.gestion,
+    );
   }
 
   @Get('proyectos/:idProyecto/balance-demografico')
-  @Roles('ADMIN_PASTORAL', 'CATOLIDER')
-  getBalanceDemografico(@Param('idProyecto', ParseIntPipe) idProyecto: number) {
-    return this.ubicacionService.getBalanceDemografico(idProyecto);
+  @Roles(Role.ADMIN_PASTORAL, Role.CATOLIDER, Role.ENCARGADO_RECEPTOR)
+  getBalanceDemografico(
+    @Param('idProyecto', ParseIntPipe) idProyecto: number,
+    @Query() filter: FilterGestionDto,
+  ) {
+    return this.ubicacionService.getBalanceDemografico(
+      idProyecto,
+      filter.semestre,
+      filter.gestion,
+    );
   }
 
   @Post('asignar')
-  @Roles('ADMIN_PASTORAL')
+  @Roles(Role.ADMIN_PASTORAL)
   asignarUbicacion(@Body() dto: AsignarUbicacionDto) {
     return this.ubicacionService.asignarUbicacion(dto);
   }
 
   @Delete('asignaciones/:id')
-  @Roles('ADMIN_PASTORAL')
+  @Roles(Role.ADMIN_PASTORAL)
   bajaUbicacion(@Param('id', ParseIntPipe) id: number) {
     return this.ubicacionService.bajaUbicacion(id);
   }
 
   @Post('reasignar')
-  @Roles('ADMIN_PASTORAL')
+  @Roles(Role.ADMIN_PASTORAL)
   reasignarUbicacion(
     @Body() dto: ReasignarUbicacionDto,
     @GetUser() user: RequestUser,
@@ -69,33 +84,37 @@ export class UbicacionController {
   }
 
   @Get('reasignaciones/historial')
-  @Roles('ADMIN_PASTORAL', 'CATOLIDER')
+  @Roles(Role.ADMIN_PASTORAL, Role.CATOLIDER)
   getHistorialReasignaciones(
-    @Query('id_proyecto') idProyecto?: string,
-    @Query('id_usuario') idUsuario?: string,
+    @Query() filter: FilterHistorialReasignacionesDto,
   ) {
-    const proyectoId = idProyecto ? parseInt(idProyecto, 10) : undefined;
-    const usuarioId = idUsuario ? parseInt(idUsuario, 10) : undefined;
-    return this.ubicacionService.getHistorialReasignaciones(
-      proyectoId,
-      usuarioId,
-    );
+    return this.ubicacionService.getHistorialReasignaciones(filter);
   }
 
   @Get('notificaciones')
-  @Roles('ADMIN_PASTORAL', 'CATOLIDER', 'VOLUNTARIO')
+  @Roles(
+    Role.ADMIN_PASTORAL,
+    Role.CATOLIDER,
+    Role.VOLUNTARIO,
+    Role.ENCARGADO_RECEPTOR,
+  )
   getNotificaciones(@Query() query: NotificacionQueryDto) {
     return this.ubicacionService.getNotificaciones(query);
   }
 
   @Patch('notificaciones/:id/marcar-leida')
-  @Roles('ADMIN_PASTORAL', 'CATOLIDER', 'VOLUNTARIO')
+  @Roles(
+    Role.ADMIN_PASTORAL,
+    Role.CATOLIDER,
+    Role.VOLUNTARIO,
+    Role.ENCARGADO_RECEPTOR,
+  )
   marcarNotificacionLeida(@Param('id', ParseIntPipe) id: number) {
     return this.ubicacionService.marcarNotificacionLeida(id);
   }
 
   @Patch('asignaciones/:id/estado-documental')
-  @Roles('ADMIN_PASTORAL')
+  @Roles(Role.ADMIN_PASTORAL)
   actualizarEstadoDocumental(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateEstadoDocumentalDto,

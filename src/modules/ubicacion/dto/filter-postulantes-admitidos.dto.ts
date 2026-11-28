@@ -1,5 +1,5 @@
 import { IsOptional, IsString, IsInt, Min, IsEnum } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import { CondicionVoluntario } from '../entities/asignacion-ubicacion.entity';
 
 export class FilterPostulantesAdmitidosDto {
@@ -20,10 +20,26 @@ export class FilterPostulantesAdmitidosDto {
   edad_max?: number;
 
   @IsOptional()
+  @Transform(({ value }: { value: unknown }) => {
+    if (typeof value === 'string') {
+      const v = value.toUpperCase();
+      if (v.includes('ANTIGUO')) return CondicionVoluntario.ANTIGUO;
+      if (v.includes('NUEVO')) return CondicionVoluntario.NUEVO;
+    }
+    return value;
+  })
   @IsEnum(CondicionVoluntario)
   condicion?: CondicionVoluntario;
 
   @IsOptional()
   @IsString()
   poblacion_sugerida?: string;
+
+  @IsOptional()
+  @IsString()
+  semestre?: string;
+
+  @IsOptional()
+  @IsString()
+  gestion?: string;
 }
