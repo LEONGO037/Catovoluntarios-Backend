@@ -5,6 +5,7 @@ import {
   IsDateString,
   IsOptional,
   IsString,
+  IsBoolean,
   ValidateIf,
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
@@ -75,4 +76,13 @@ export class ReasignarUbicacionDto {
   @IsOptional()
   @IsString()
   gestion?: string;
+
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) => {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return value;
+  })
+  @IsBoolean()
+  traslado_excepcional?: boolean;
 }

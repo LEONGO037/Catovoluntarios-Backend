@@ -411,8 +411,24 @@ export class UbicacionService {
       ),
     );
 
+    const usuariosExcluidos = new Set<number>();
     let candidatos: EstudianteDemografico[] = [];
     if (this.dataSource && typeof this.dataSource.query === 'function') {
+      try {
+        const excluidosRows: { id: number }[] = await this.dataSource.query(
+          `SELECT id
+             FROM usuarios
+            WHERE rol = 'CATOLIDER'
+               OR COALESCE(es_catolider_vigente, FALSE) = TRUE
+               OR rol <> 'VOLUNTARIO'`,
+        );
+        for (const row of excluidosRows) {
+          usuariosExcluidos.add(Number(row.id));
+        }
+      } catch {
+        // Ignorar si la tabla usuarios no esta disponible en entorno de prueba
+      }
+
       try {
         const rows: {
           user_id: number;
@@ -438,10 +454,13 @@ export class UbicacionService {
              ep.poblaciones_sugeridas,
              (SELECT COUNT(*) FROM asignaciones_ubicacion au WHERE au.id_usuario = p.user_id AND au.semestre <> $1) AS asignaciones_previas
            FROM postulaciones p
-           LEFT JOIN usuarios u ON u.id = p.user_id
+           INNER JOIN usuarios u ON u.id = p.user_id
            LEFT JOIN evaluaciones_psicologicas ep ON ep.postulacion_id = p.id
            WHERE p.semestre = $1
              AND p.user_id IS NOT NULL
+             AND u.activo = TRUE
+             AND u.rol = 'VOLUNTARIO'
+             AND COALESCE(u.es_catolider_vigente, FALSE) = FALSE
              AND (p.estado_postulacion IN ('ADMITIDO', 'APTO_ENTREVISTA') AND (ep.dictamen IS NULL OR ep.dictamen IN ('APROBADO', 'OBSERVADO')))`,
           [semestre],
         );
@@ -478,7 +497,10 @@ export class UbicacionService {
     const base = candidatos.length > 0 ? candidatos : this.catalogoEstudiantes;
 
     return base.filter((estudiante) => {
-      if (usuariosUbicados.has(estudiante.id_usuario)) {
+      if (
+        usuariosUbicados.has(estudiante.id_usuario) ||
+        usuariosExcluidos.has(estudiante.id_usuario)
+      ) {
         return false;
       }
 
@@ -941,10 +963,11 @@ export class UbicacionService {
         );
       }
 
+      const esTrasladoExcepcional = Boolean(dto.traslado_excepcional);
       const diffDiasVentana = Math.floor(
         (fechaEfectivaDia - fechaReferenciaDia) / (1000 * 60 * 60 * 24),
       );
-      if (diffDiasVentana > 28) {
+      if (!esTrasladoExcepcional && diffDiasVentana > 28) {
         throw new BadRequestException(
           `Las reasignaciones solo se permiten durante las primeras 4 semanas del semestre (han transcurrido ${diffDiasVentana} días según RF-13)`,
         );
@@ -1053,6 +1076,12 @@ export class UbicacionService {
         );
       }
 
+      const observacionesFinal = esTrasladoExcepcional
+        ? dto.observaciones?.trim()
+          ? `[Traslado excepcional] ${dto.observaciones.trim()}`
+          : 'Traslado excepcional autorizado fuera de las primeras 4 semanas'
+        : dto.observaciones?.trim() || null;
+
       const historial = manager.create(HistorialReasignacionEntity, {
         id_asignacion: asignacionOrigen.id_asignacion,
         id_usuario: asignacionOrigen.id_usuario,
@@ -1062,7 +1091,7 @@ export class UbicacionService {
         motivo_traslado: motivoFinal,
         motivo_otro_detalle: motivoOtroDetalle,
         fecha_efectiva: fechaEfectiva,
-        observaciones: dto.observaciones || null,
+        observaciones: observacionesFinal,
         registrado_por_id: registradoPorId || null,
       });
       const historialGuardado = await manager.save(historial);
@@ -1071,7 +1100,10 @@ export class UbicacionService {
       const nombreOrigen =
         asignacionOrigen.proyecto?.nombre_proyecto || 'Origen';
       const nombreDestino = proyectoDestino.nombre_proyecto;
-      const motivoTexto = this.formatearMotivo(motivoFinal, motivoOtroDetalle);
+      const etiquetaExcepcional = esTrasladoExcepcional
+        ? ' (Traslado excepcional)'
+        : '';
+      const motivoTexto = `${this.formatearMotivo(motivoFinal, motivoOtroDetalle)}${etiquetaExcepcional}`;
 
       const lideresOrigen = this.obtenerLideresProyecto(
         asignacionOrigen.proyecto,

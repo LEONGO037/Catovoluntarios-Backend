@@ -530,5 +530,59 @@ describe('UbicacionService', () => {
         BadRequestException,
       );
     });
+
+    it('permite la reasignacion fuera de las 4 semanas cuando traslado_excepcional es true', async () => {
+      const asignacionAntigua = {
+        ...mockAsignacion,
+        createdAt: new Date('2026-01-01T00:00:00Z'),
+      };
+
+      dataSource.transaction = jest.fn(
+        async (cb: (manager: MockManager) => Promise<unknown>) => {
+          const manager: MockManager = {
+            findOne: jest.fn((entityClass: unknown) => {
+              if (entityClass === AsignacionUbicacionEntity) {
+                return Promise.resolve({ ...asignacionAntigua });
+              }
+              return Promise.resolve({ ...mockProyectoDestino });
+            }),
+            count: jest.fn().mockResolvedValue(5),
+            create: jest.fn((_entityClass: unknown, dto: unknown) => dto),
+            save: jest.fn((entity: Record<string, unknown>) => {
+              if (entity?.tipo_notificacion) {
+                notificacionesGuardadas.push({
+                  tipo_notificacion:
+                    entity.tipo_notificacion as TipoNotificacionMovimiento,
+                  mensaje: entity.mensaje as string,
+                });
+              }
+              return Promise.resolve({
+                ...entity,
+                id: (entity?.id as number) || 56,
+                id_asignacion: (entity?.id_asignacion as number) || 56,
+                id_historial: (entity?.id_historial as number) || 11,
+              });
+            }),
+            insert: jest.fn().mockResolvedValue({}),
+          };
+          return await cb(manager);
+        },
+      );
+
+      const dto: ReasignarUbicacionDto = {
+        id_asignacion_origen: 50,
+        id_proyecto_destino: 2,
+        motivo_traslado: MotivoTraslado.CRUCE_MATERIAS,
+        fecha_efectiva: '2026-03-01T00:00:00Z',
+        traslado_excepcional: true,
+      };
+
+      const res = await service.reasignarUbicacion(dto, 1);
+      expect(res.historial.observaciones).toContain('Traslado excepcional');
+      expect(notificacionesGuardadas.length).toBe(5);
+      expect(notificacionesGuardadas[0].mensaje).toContain(
+        '(Traslado excepcional)',
+      );
+    });
   });
 });

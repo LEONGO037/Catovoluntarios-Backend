@@ -9,7 +9,7 @@ import {
   IsBoolean,
   Validate,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import { IsFixedFareConstraint } from './create-proyecto-receptor.dto';
 
 export class UpdateProyectoReceptorDto {
@@ -91,6 +91,11 @@ export class UpdateProyectoReceptorDto {
   catolider_aprendiz_id?: number | null;
 
   @IsOptional()
+  @Transform(({ value }: { value: unknown }) => {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return value;
+  })
   @IsBoolean()
   activo?: boolean;
 }

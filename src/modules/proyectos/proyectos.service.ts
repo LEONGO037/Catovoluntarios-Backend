@@ -58,7 +58,7 @@ export class ProyectosService {
     private readonly asignacionRepository: Repository<AsignacionUbicacionEntity>,
     @Optional()
     private readonly dataSource?: DataSource,
-  ) {}
+  ) { }
 
   async obtenerGestionActiva(
     semestreParam?: string,
@@ -202,7 +202,8 @@ export class ProyectosService {
 
     const direccion =
       createDto.direccion_exacta ?? institucion.direccion_exacta;
-    const zona = createDto.macrodistrito_zona ?? institucion.macrodistrito_zona;
+    const zona =
+      createDto.macrodistrito_zona ?? institucion.macrodistrito_zona;
     const supervisor =
       createDto.nombre_supervisor_centro ??
       institucion.nombre_supervisor_centro;
@@ -275,9 +276,17 @@ export class ProyectosService {
       });
     }
 
-    if (filter.solo_activos !== undefined && filter.solo_activos !== null) {
+    if (filter.activo !== undefined) {
       queryBuilder.andWhere('proyecto.activo = :activo', {
-        activo: filter.solo_activos,
+        activo: filter.activo,
+      });
+    } else if (!filter.incluirInactivos && !filter.incluir_inactivos) {
+      const soloActivos =
+        filter.solo_activos !== undefined && filter.solo_activos !== null
+          ? filter.solo_activos
+          : true;
+      queryBuilder.andWhere('proyecto.activo = :activo', {
+        activo: soloActivos,
       });
     }
 
@@ -292,7 +301,7 @@ export class ProyectosService {
 
     if (filter.buscar) {
       queryBuilder.andWhere(
-        "(LOWER(proyecto.nombre_proyecto) LIKE LOWER(:buscar) OR LOWER(proyecto.supervisor_nombre) LIKE LOWER(:buscar) OR LOWER(COALESCE(institucion.nombre, '')) LIKE LOWER(:buscar))",
+        '(LOWER(proyecto.nombre_proyecto) LIKE LOWER(:buscar) OR LOWER(proyecto.supervisor_nombre) LIKE LOWER(:buscar) OR LOWER(COALESCE(institucion.nombre, \'\')) LIKE LOWER(:buscar))',
         { buscar: `%${filter.buscar}%` },
       );
     }
@@ -319,7 +328,8 @@ export class ProyectosService {
       total,
       page,
       limit,
-      semestre_activo: semestreFiltro || (await this.obtenerGestionActiva()),
+      semestre_activo:
+        semestreFiltro || (await this.obtenerGestionActiva()),
     };
   }
 
@@ -469,6 +479,9 @@ export class ProyectosService {
     }
     if (updateDto.monto_pasaje_fijo !== undefined) {
       proyecto.monto_pasaje_por_dia = Number(updateDto.monto_pasaje_fijo);
+    }
+    if (updateDto.activo !== undefined) {
+      proyecto.activo = updateDto.activo;
     }
 
     return await this.proyectoRepository.save(proyecto);
