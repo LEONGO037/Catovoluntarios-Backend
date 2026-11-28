@@ -4,6 +4,7 @@ import { AsignacionUbicacionEntity } from './entities/asignacion-ubicacion.entit
 import { HistorialReasignacionEntity } from './entities/historial-reasignacion.entity';
 import { NotificacionMovimientoEntity } from './entities/notificacion-movimiento.entity';
 import { ProyectoReceptorEntity } from '../proyectos/entities/proyecto-receptor.entity';
+import { NotificacionEntity } from '../notificaciones/notificacion.entity';
 import { UbicacionService } from './ubicacion.service';
 import { UbicacionController } from './ubicacion.controller';
 
@@ -14,6 +15,7 @@ import { UbicacionController } from './ubicacion.controller';
       HistorialReasignacionEntity,
       NotificacionMovimientoEntity,
       ProyectoReceptorEntity,
+      NotificacionEntity,
     ]),
   ],
   controllers: [UbicacionController],

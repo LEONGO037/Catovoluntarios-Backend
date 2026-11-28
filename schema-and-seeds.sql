@@ -10,6 +10,7 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
+DROP TABLE IF EXISTS notificaciones_movimiento CASCADE;
 DROP TABLE IF EXISTS notificaciones_sistema CASCADE;
 DROP TABLE IF EXISTS certificados_fundacion CASCADE;
 DROP TABLE IF EXISTS evaluaciones_proyectos_receptores CASCADE;
@@ -18,6 +19,7 @@ DROP TABLE IF EXISTS reportes_semaforo CASCADE;
 DROP TABLE IF EXISTS liquidaciones_pasajes CASCADE;
 DROP TABLE IF EXISTS conciliaciones_mensuales_supervisor CASCADE;
 DROP TABLE IF EXISTS registros_asistencia CASCADE;
+DROP TABLE IF EXISTS historial_reasignaciones CASCADE;
 DROP TABLE IF EXISTS reasignaciones_proyecto CASCADE;
 DROP TABLE IF EXISTS asignaciones_ubicacion CASCADE;
 DROP TABLE IF EXISTS asistencias_induccion CASCADE;
@@ -28,11 +30,14 @@ DROP TABLE IF EXISTS entrevistas CASCADE;
 DROP TABLE IF EXISTS catolideres_semestre CASCADE;
 DROP TABLE IF EXISTS postulaciones CASCADE;
 DROP TABLE IF EXISTS proyectos_receptores CASCADE;
+DROP TABLE IF EXISTS instituciones CASCADE;
 DROP TABLE IF EXISTS perfiles_voluntario CASCADE;
 DROP TABLE IF EXISTS usuarios CASCADE;
 DROP TABLE IF EXISTS semestres CASCADE;
 
 -- Eliminar Tipos ENUM si existen
+DROP TYPE IF EXISTS notificaciones_movimiento_tipo_notificacion_enum CASCADE;
+DROP TYPE IF EXISTS asignaciones_ubicacion_estado_enum CASCADE;
 DROP TYPE IF EXISTS estado_pago_pasajes_enum CASCADE;
 DROP TYPE IF EXISTS color_semaforo_enum CASCADE;
 DROP TYPE IF EXISTS estado_asistencia_enum CASCADE;
@@ -62,7 +67,8 @@ CREATE TYPE rol_usuario_enum AS ENUM (
     'POSTULANTE',
     'INTERESADO',
     'DOCENTE_SUPERVISOR',
-    'SUPERVISOR_CENTRO'
+    'SUPERVISOR_CENTRO',
+    'ENCARGADO_RECEPTOR'
 );
 
 CREATE TYPE tipo_relacion_ucb_enum AS ENUM (
@@ -143,12 +149,27 @@ CREATE TYPE condicion_voluntario_enum AS ENUM (
     'ANTIGUO'
 );
 
+CREATE TYPE asignaciones_ubicacion_estado_enum AS ENUM (
+    'Activo',
+    'Reasignado',
+    'Retirado'
+);
+
+CREATE TYPE notificaciones_movimiento_tipo_notificacion_enum AS ENUM (
+    'ALTA_UBICACION',
+    'BAJA_UBICACION',
+    'BAJA_CATOLIDER',
+    'ALTA_CATOLIDER',
+    'REASIGNACION_VOLUNTARIO'
+);
+
 CREATE TYPE motivo_traslado_enum AS ENUM (
     'CRUCE_MATERIAS_UNIVERSITARIAS',
     'DIFICULTAD_TRANSPORTE_DISTANCIA',
     'SOLICITUD_SUPERVISOR_CENTRO',
     'INCOMPATIBILIDAD_PERFIL',
-    'OTRO_JUSTIFICADO'
+    'OTRO_JUSTIFICADO',
+    'Otro'
 );
 
 CREATE TYPE estado_asistencia_enum AS ENUM (
@@ -230,17 +251,35 @@ CREATE TABLE perfiles_voluntario (
 );
 
 -- ====================================================================
--- 6. TABLA: PROYECTOS_RECEPTORES (Centros, convenios, tarifa y supervisor)
+-- 6. TABLA: INSTITUCIONES Y PROYECTOS_RECEPTORES (1:N por gestión)
 -- ====================================================================
+CREATE TABLE instituciones (
+    id SERIAL PRIMARY KEY,
+    nombre VARCHAR(200) NOT NULL,
+    direccion_exacta VARCHAR(255) DEFAULT '' NOT NULL,
+    macrodistrito_zona VARCHAR(100) DEFAULT 'Centro' NOT NULL,
+    nombre_supervisor_centro VARCHAR(150) DEFAULT 'Supervisor Asignado' NOT NULL,
+    telefono_contacto VARCHAR(30) DEFAULT '70000000' NOT NULL,
+    correo VARCHAR(150) DEFAULT 'centro@pastoral.ucb.edu.bo',
+    fecha_inicio_convenio DATE,
+    fecha_fin_convenio DATE,
+    activo BOOLEAN DEFAULT TRUE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
 CREATE TABLE proyectos_receptores (
     id SERIAL PRIMARY KEY,
+    id_institucion INT REFERENCES instituciones(id) ON DELETE RESTRICT,
+    semestre VARCHAR(20) DEFAULT '2/2026' NOT NULL,
     nombre_proyecto VARCHAR(200) NOT NULL,
     direccion_exacta VARCHAR(255) NOT NULL,
     macrodistrito_zona VARCHAR(100),
     -- Clave foránea al usuario responsable por parte del proyecto receptor (SUPERVISOR_CENTRO)
     usuario_supervisor_id INT REFERENCES usuarios(id) ON DELETE SET NULL,
     supervisor_nombre VARCHAR(150) NOT NULL,
-    supervisor_telefono VARCHAR(20) NOT NULL,
+    supervisor_telefono VARCHAR(30) NOT NULL,
+    correo VARCHAR(150) DEFAULT 'centro@pastoral.ucb.edu.bo',
     fecha_inicio_convenio DATE,
     fecha_fin_convenio DATE,
     poblacion_objetivo TEXT NOT NULL,                         -- Ej: 'Adultos mayores, Niñez, Psiquiatría'
@@ -250,7 +289,9 @@ CREATE TABLE proyectos_receptores (
     cupo_ocupado INT DEFAULT 0 NOT NULL CHECK (cupo_ocupado >= 0),
     catolider_titular_id INT REFERENCES usuarios(id) ON DELETE SET NULL,
     catolider_aprendiz_id INT REFERENCES usuarios(id) ON DELETE SET NULL,
-    activo BOOLEAN DEFAULT TRUE NOT NULL
+    activo BOOLEAN DEFAULT TRUE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 -- ====================================================================
@@ -409,29 +450,71 @@ CREATE TABLE asignaciones_ubicacion (
     id SERIAL PRIMARY KEY,
     id_usuario INT NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
     id_proyecto INT NOT NULL REFERENCES proyectos_receptores(id) ON DELETE CASCADE,
-    semestre_id INT NOT NULL REFERENCES semestres(id) ON DELETE RESTRICT,
+    semestre_id INT REFERENCES semestres(id) ON DELETE RESTRICT,
+    semestre VARCHAR(20) DEFAULT '2/2026' NOT NULL,
     condicion condicion_voluntario_enum DEFAULT 'NUEVO' NOT NULL,
     horario_comprometido VARCHAR(150),                        -- Ej: 'Sábados de 09:00 a 13:00'
     poliza_validada BOOLEAN DEFAULT FALSE NOT NULL,
     induccion_completada BOOLEAN DEFAULT FALSE NOT NULL,
     -- CANDADO DE ORO: Solo TRUE si poliza_validada=TRUE AND induccion_completada=TRUE
     habilitado_campo BOOLEAN DEFAULT FALSE NOT NULL,
+    estado asignaciones_ubicacion_estado_enum DEFAULT 'Activo' NOT NULL,
     activo BOOLEAN DEFAULT TRUE NOT NULL,
-    CONSTRAINT uq_asignacion_usuario_semestre UNIQUE (id_usuario, semestre_id)
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
+CREATE UNIQUE INDEX uq_asignacion_activa_usuario_semestre
+    ON asignaciones_ubicacion (id_usuario, semestre)
+    WHERE estado = 'Activo' AND activo = TRUE;
 
 -- ====================================================================
--- 14. TABLA: REASIGNACIONES_PROYECTO (P-15: Traslados de primer mes)
+-- 14. TABLAS: REASIGNACIONES E HISTORIAL / NOTIFICACIONES DE MOVIMIENTO (P-15)
 -- ====================================================================
 CREATE TABLE reasignaciones_proyecto (
     id SERIAL PRIMARY KEY,
     asignacion_id INT NOT NULL REFERENCES asignaciones_ubicacion(id) ON DELETE CASCADE,
     proyecto_origen_id INT NOT NULL REFERENCES proyectos_receptores(id) ON DELETE RESTRICT,
     proyecto_destino_id INT NOT NULL REFERENCES proyectos_receptores(id) ON DELETE RESTRICT,
+    semestre VARCHAR(20) DEFAULT '2/2026' NOT NULL,
     motivo motivo_traslado_enum NOT NULL,
+    motivo_otro_detalle TEXT,
     detalle_motivo TEXT,
     fecha_efectiva DATE NOT NULL,
     registrado_por INT NOT NULL REFERENCES usuarios(id) ON DELETE RESTRICT
+);
+
+CREATE TABLE historial_reasignaciones (
+    id_historial SERIAL PRIMARY KEY,
+    id_asignacion INT NOT NULL REFERENCES asignaciones_ubicacion(id) ON DELETE CASCADE,
+    id_usuario INT NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    id_proyecto_origen INT NOT NULL REFERENCES proyectos_receptores(id) ON DELETE RESTRICT,
+    id_proyecto_destino INT NOT NULL REFERENCES proyectos_receptores(id) ON DELETE RESTRICT,
+    semestre VARCHAR(20) DEFAULT '2/2026' NOT NULL,
+    motivo_traslado motivo_traslado_enum NOT NULL,
+    motivo_otro_detalle TEXT,
+    fecha_efectiva TIMESTAMP WITH TIME ZONE NOT NULL,
+    observaciones TEXT,
+    registrado_por_id INT REFERENCES usuarios(id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE TABLE notificaciones_movimiento (
+    id_notificacion SERIAL PRIMARY KEY,
+    id_usuario_destinatario INT NOT NULL,
+    rol_destinatario VARCHAR(50) NOT NULL,
+    tipo_notificacion notificaciones_movimiento_tipo_notificacion_enum NOT NULL,
+    id_asignacion INT,
+    id_proyecto INT,
+    semestre VARCHAR(20) DEFAULT '2/2026' NOT NULL,
+    motivo_traslado VARCHAR(100),
+    motivo_otro_detalle TEXT,
+    titulo VARCHAR(200) NOT NULL,
+    mensaje TEXT NOT NULL,
+    leido BOOLEAN DEFAULT FALSE NOT NULL,
+    fecha_envio TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 -- ====================================================================
@@ -624,7 +707,9 @@ CREATE INDEX idx_usuarios_email ON usuarios(email);
 CREATE INDEX idx_usuarios_ci ON usuarios(ci);
 CREATE INDEX idx_usuarios_rol ON usuarios(rol);
 
+CREATE INDEX idx_instituciones_nombre ON instituciones(LOWER(nombre));
 CREATE INDEX idx_proyectos_supervisor ON proyectos_receptores(usuario_supervisor_id);
+CREATE INDEX idx_proyectos_institucion_semestre ON proyectos_receptores(id_institucion, semestre);
 
 CREATE INDEX idx_postulaciones_codigo ON postulaciones(codigo_postulacion);
 CREATE INDEX idx_postulaciones_semestre ON postulaciones(semestre_id);
@@ -632,8 +717,11 @@ CREATE INDEX idx_postulaciones_estado ON postulaciones(estado_postulacion);
 CREATE INDEX idx_postulaciones_carrera ON postulaciones(carrera);
 
 CREATE INDEX idx_asignaciones_proyecto ON asignaciones_ubicacion(id_proyecto);
-CREATE INDEX idx_asignaciones_semestre ON asignaciones_ubicacion(semestre_id);
+CREATE INDEX idx_asignaciones_semestre ON asignaciones_ubicacion(semestre);
 CREATE INDEX idx_asignaciones_habilitado ON asignaciones_ubicacion(habilitado_campo);
+CREATE INDEX idx_historial_reasig_asignacion ON historial_reasignaciones(id_asignacion);
+CREATE INDEX idx_historial_reasig_semestre ON historial_reasignaciones(semestre);
+CREATE INDEX idx_notif_mov_destinatario ON notificaciones_movimiento(id_usuario_destinatario, leido);
 
 CREATE INDEX idx_asistencias_asignacion ON registros_asistencia(id_asignacion);
 CREATE INDEX idx_asistencias_fecha ON registros_asistencia(fecha);
@@ -692,4 +780,46 @@ SET rol = 'ADMIN_PASTORAL',
     primer_apellido = 'Delgado',
     segundo_apellido = 'Medrano',
     activo = TRUE;
+
+-- Instituciones y Proyectos Receptores iniciales (Gestión 2/2026, tarifas fijas en Bs)
+INSERT INTO instituciones (nombre, direccion_exacta, macrodistrito_zona, nombre_supervisor_centro, telefono_contacto, correo, fecha_inicio_convenio, fecha_fin_convenio, activo)
+SELECT v.nombre, v.direccion_exacta, v.macrodistrito_zona, v.nombre_supervisor_centro, v.telefono_contacto, v.correo, v.fecha_inicio::date, v.fecha_fin::date, TRUE
+FROM (VALUES
+    ('Hogar de Niños San José', 'Av. Buenos Aires Nro. 1420, esq. Max Paredes', 'Cotahuma', 'Hna. Teresa Morales', '2491028', 'hogar.sanjose@pastoral.ucb.edu.bo', '2026-02-01', '2026-12-31'),
+    ('Centro de Acogida San Ramón', 'Calle 18 Nro. 300, Urb. Las Retamas', 'Sur - Achumani', 'Lic. Gonzalo Fernández', '2793041', 'sanramon.achumani@pastoral.ucb.edu.bo', '2026-02-01', '2026-12-31'),
+    ('Comedor Popular San Francisco de Asís', 'Plaza San Francisco, Calle Sagárnaga s/n', 'Centro', 'Fray Javier Alarcón', '2310492', 'comedor.sanfrancisco@pastoral.ucb.edu.bo', '2026-02-01', '2026-12-31'),
+    ('Centro Infantil Comunitario Virgen de Copacabana', 'Av. Naciones Unidas Nro. 850, parada 3', 'Max Paredes - Munaypata', 'Prof. Martha Quisbert', '2456781', 'infantil.munaypata@pastoral.ucb.edu.bo', '2026-02-01', '2026-12-31'),
+    ('Fe y Alegría Alto Pampahasi', 'Sector Samapa, Calle 4 Nro. 52', 'San Antonio - Alto Pampahasi', 'Lic. René Cárdenas', '2234091', 'feyalegria.pampahasi@pastoral.ucb.edu.bo', '2026-02-01', '2026-12-31'),
+    ('Hospital del Niño', 'Calle Claudio Sanjinés s/n, Miraflores', 'Centro - Miraflores', 'Lic. Beatriz Condori', '2228394', 'ludica.hospdelnino@pastoral.ucb.edu.bo', '2026-02-01', '2026-12-31'),
+    ('Aldeas Infantiles SOS Mallasa', 'Av. Hernán Siles Zuazo Nro. 410', 'Mallasa', 'Lic. Claudia Beltrán', '2748192', 'aldeas.mallasa@pastoral.ucb.edu.bo', '2026-02-01', '2026-12-31'),
+    ('Centro de Acogida Refugio de Esperanza', 'Av. Las Américas Nro. 670, Villa Fátima', 'Periférica - Villa Fátima', 'Hna. Rosario Apaza', '2214902', 'refugio.esperanza@pastoral.ucb.edu.bo', '2026-02-01', '2026-12-31')
+) AS v(nombre, direccion_exacta, macrodistrito_zona, nombre_supervisor_centro, telefono_contacto, correo, fecha_inicio, fecha_fin)
+WHERE NOT EXISTS (
+    SELECT 1 FROM instituciones i WHERE LOWER(i.nombre) = LOWER(v.nombre)
+);
+
+INSERT INTO proyectos_receptores (
+    id_institucion, semestre, nombre_proyecto, direccion_exacta, macrodistrito_zona,
+    supervisor_nombre, supervisor_telefono, correo, fecha_inicio_convenio, fecha_fin_convenio,
+    poblacion_objetivo, actividades_semestre_actual, monto_pasaje_por_dia, cupo_maximo, cupo_ocupado, activo
+)
+SELECT
+    i.id, '2/2026', p.nombre_proyecto, i.direccion_exacta, i.macrodistrito_zona,
+    i.nombre_supervisor_centro, i.telefono_contacto, i.correo, i.fecha_inicio_convenio, i.fecha_fin_convenio,
+    p.poblacion_objetivo, p.actividades_semestre_actual, p.monto_pasaje_por_dia, p.cupo_maximo, 0, TRUE
+FROM (VALUES
+    ('Hogar de Niños San José', 'Hogar de Niños San José', 'Niños y niñas en situación de acogida temporal (4 a 12 años)', 'Refuerzo escolar matutino, talleres de psicomotricidad y dinámicas lúdicas de integración', 10.00, 15),
+    ('Centro de Acogida San Ramón', 'Centro de Acogida San Ramón', 'Adultos mayores en residencia permanente', 'Acompañamiento afectivo, talleres de estimulación cognitiva, lectura guiada y paseos asistidos', 15.00, 20),
+    ('Comedor Popular San Francisco de Asís', 'Comedor Popular San Francisco de Asís', 'Personas en situación de vulnerabilidad extrema y personas adultas mayores', 'Apoyo en preparación y distribución de raciones alimentarias, registro de beneficiarios y contención fraterna', 10.00, 12),
+    ('Centro Infantil Comunitario Virgen de Copacabana', 'Centro Infantil Comunitario Virgen de Copacabana', 'Primera infancia (hijos e hijas de comerciantes gremiales)', 'Estimulación temprana, talleres de higiene dental, apoyo nutricional y juegos didácticos', 12.00, 18),
+    ('Fe y Alegría Alto Pampahasi', 'Centro de Apoyo Escolar Fe y Alegría Alto Pampahasi', 'Estudiantes de primaria y secundaria de la ladera este', 'Tutorías en matemáticas, física y lenguaje; biblioteca comunitaria y talleres vocacionales', 20.00, 16),
+    ('Hospital del Niño', 'Hospital del Niño - Área Lúdica Pastoral', 'Pacientes pediátricos en internación prolongada', 'Pedagogía hospitalaria, lectura de cuentos en sala, musicoterapia y apoyo emocional a padres', 10.00, 10),
+    ('Aldeas Infantiles SOS Mallasa', 'Aldeas Infantiles SOS - Programa Familiar Mallasa', 'Familias y adolescentes en proceso de vida independiente', 'Orientación para el empleo, habilidades para la vida, acompañamiento en tareas y talleres artísticos', 20.00, 14),
+    ('Centro de Acogida Refugio de Esperanza', 'Centro de Acogida Refugio de Esperanza', 'Madres adolescentes y niños en primera infancia', 'Cuidado infantil mientras las madres estudian, talleres de computación básica y costura comunitaria', 12.00, 15)
+) AS p(institucion_nombre, nombre_proyecto, poblacion_objetivo, actividades_semestre_actual, monto_pasaje_por_dia, cupo_maximo)
+JOIN instituciones i ON LOWER(i.nombre) = LOWER(p.institucion_nombre)
+WHERE NOT EXISTS (
+    SELECT 1 FROM proyectos_receptores pr
+    WHERE LOWER(pr.nombre_proyecto) = LOWER(p.nombre_proyecto) AND pr.semestre = '2/2026'
+);
 

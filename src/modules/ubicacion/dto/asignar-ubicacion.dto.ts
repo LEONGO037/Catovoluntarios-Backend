@@ -20,11 +20,15 @@ export class AsignarUbicacionDto {
   @IsNotEmpty()
   id_proyecto: number;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  semestre: string;
+  semestre?: string;
 
-  @Transform(({ value }) => {
+  @IsOptional()
+  @IsString()
+  gestion?: string;
+
+  @Transform(({ value }: { value: unknown }) => {
     if (typeof value === 'string') {
       const v = value.toUpperCase();
       if (v.includes('ANTIGUO')) return CondicionVoluntario.ANTIGUO;
@@ -46,4 +50,8 @@ export class AsignarUbicacionDto {
   @IsOptional()
   @IsBoolean()
   induccion_completada?: boolean = false;
+
+  @IsOptional()
+  @IsString()
+  motivo?: string;
 }

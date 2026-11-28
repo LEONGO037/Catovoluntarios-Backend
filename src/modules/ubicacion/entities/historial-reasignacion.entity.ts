@@ -12,6 +12,7 @@ export enum MotivoTraslado {
   SOLICITUD_SUPERVISOR = 'SOLICITUD_SUPERVISOR_CENTRO',
   INCOMPATIBILIDAD_PERFIL = 'INCOMPATIBILIDAD_PERFIL',
   OTRO_JUSTIFICADO = 'OTRO_JUSTIFICADO',
+  OTRO = 'Otro',
 }
 
 @Entity('historial_reasignaciones')
@@ -31,12 +32,18 @@ export class HistorialReasignacionEntity {
   @Column({ type: 'int' })
   id_proyecto_destino: number;
 
+  @Column({ type: 'varchar', length: 20, name: 'semestre', default: '2/2026' })
+  semestre: string;
+
   @Column({
     type: 'enum',
     enum: MotivoTraslado,
     enumName: 'motivo_traslado_enum',
   })
   motivo_traslado: MotivoTraslado;
+
+  @Column({ type: 'text', name: 'motivo_otro_detalle', nullable: true })
+  motivo_otro_detalle: string | null;
 
   @Column({ type: 'timestamp with time zone' })
   fecha_efectiva: Date;

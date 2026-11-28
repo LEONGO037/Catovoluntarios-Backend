@@ -8,6 +8,7 @@ import {
   Min,
   IsOptional,
   Validate,
+  ValidateIf,
   ValidationArguments,
   ValidatorConstraint,
   ValidatorConstraintInterface,
@@ -27,34 +28,76 @@ export class IsFixedFareConstraint implements ValidatorConstraintInterface {
 }
 
 export class CreateProyectoReceptorDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  id_institucion?: number;
+
+  @IsOptional()
+  @IsString()
+  semestre?: string;
+
+  @IsOptional()
+  @IsString()
+  gestion?: string;
+
   @IsString()
   @IsNotEmpty()
   nombre_proyecto: string;
 
+  @ValidateIf(
+    (o: CreateProyectoReceptorDto) =>
+      !o.id_institucion || o.direccion_exacta !== undefined,
+  )
   @IsString()
   @IsNotEmpty()
-  direccion_exacta: string;
+  direccion_exacta?: string;
 
+  @ValidateIf(
+    (o: CreateProyectoReceptorDto) =>
+      !o.id_institucion || o.macrodistrito_zona !== undefined,
+  )
   @IsString()
   @IsNotEmpty()
-  macrodistrito_zona: string;
+  macrodistrito_zona?: string;
 
+  @ValidateIf(
+    (o: CreateProyectoReceptorDto) =>
+      !o.id_institucion || o.nombre_supervisor_centro !== undefined,
+  )
   @IsString()
   @IsNotEmpty()
-  nombre_supervisor_centro: string;
+  nombre_supervisor_centro?: string;
 
+  @ValidateIf(
+    (o: CreateProyectoReceptorDto) =>
+      !o.id_institucion || o.telefono_contacto !== undefined,
+  )
   @IsString()
   @IsNotEmpty()
-  telefono_contacto: string;
+  telefono_contacto?: string;
 
+  @ValidateIf(
+    (o: CreateProyectoReceptorDto) =>
+      !o.id_institucion || o.correo !== undefined,
+  )
   @IsEmail()
-  correo: string;
+  correo?: string;
 
+  @ValidateIf(
+    (o: CreateProyectoReceptorDto) =>
+      !o.id_institucion || o.fecha_inicio_convenio !== undefined,
+  )
   @IsDateString()
-  fecha_inicio_convenio: string;
+  fecha_inicio_convenio?: string;
 
+  @ValidateIf(
+    (o: CreateProyectoReceptorDto) =>
+      !o.id_institucion || o.fecha_fin_convenio !== undefined,
+  )
   @IsDateString()
-  fecha_fin_convenio: string;
+  fecha_fin_convenio?: string;
 
   @IsString()
   @IsNotEmpty()
